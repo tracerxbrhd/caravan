@@ -32,10 +32,12 @@ The root `README.md` is intentionally product-facing. Internal technical detail 
 - [`architecture/14-rules-guide.md`](architecture/14-rules-guide.md) — optional text/visual onboarding guide and live-match help boundary.
 - [`architecture/15-results-and-rematch.md`](architecture/15-results-and-rematch.md) — authoritative result presentation and durable two-party rematch handshake.
 - [`architecture/16-tactile-game-feel.md`](architecture/16-tactile-game-feel.md) — confirmed card-motion choreography, public discard destinations, original audio cues, platform haptics, and reduced-motion behavior.
+- [`architecture/17-production-docker-and-deployment.md`](architecture/17-production-docker-and-deployment.md) — production images, Compose topology, health/readiness, migration order, and manual deployment contract.
 
 ## Development
 
 - [`development/README.md`](development/README.md) — development entrypoint. Concrete commands should be added there only after the corresponding tooling exists.
+- [`development/production-deployment.md`](development/production-deployment.md) — VPS/Compose/GitHub Actions deployment runbook and rollback guidance.
 
 ## Precedence
 
