@@ -15,6 +15,7 @@ import {
   type MatchRealtimeConnection,
 } from './realtime.js';
 import { RulesGuide } from './RulesGuide.js';
+import { commitPresentationUpdate } from './view-transition.js';
 
 const IDLE_REMATCH: RematchStatus = { status: 'IDLE' };
 
@@ -84,7 +85,7 @@ export function MatchSession({
         if (state !== 'ONLINE') setPending(false);
       },
       onSnapshot: (next) => {
-        setSnapshot(next);
+        commitPresentationUpdate(() => setSnapshot(next));
         setPending(false);
         setRejection(null);
       },
