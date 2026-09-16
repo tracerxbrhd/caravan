@@ -308,7 +308,8 @@ describeDatabase('authenticated realtime runtime', () => {
       expect(disconnectedSnapshot).not.toBeNull();
 
       const before = await service.getSnapshot(matchId, active.profile.id);
-      if (before === null) throw new Error('Expected active-player snapshot after peer disconnect.');
+      if (before === null)
+        throw new Error('Expected active-player snapshot after peer disconnect.');
       expect(before.status).toBe('ACTIVE');
       expect(before.connected[activeSeat]).toBe(true);
       expect(before.connected[activeSeat === 'A' ? 'B' : 'A']).toBe(false);
