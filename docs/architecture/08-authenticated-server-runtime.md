@@ -2,13 +2,11 @@
 
 ## Status
 
-Implemented as the initial HTTP/authentication foundation for the first playable.
-
-This layer turns `apps/server` from a domain/storage package into a runnable backend process without introducing realtime match transport prematurely.
+Implemented as the HTTP/authentication foundation for the first playable. The authenticated realtime layer now consumes this boundary; see [`09-authenticated-realtime-runtime.md`](09-authenticated-realtime-runtime.md).
 
 ## Runtime boundary
 
-`apps/server` now owns a Fastify HTTP runtime with:
+`apps/server` owns a Fastify runtime with:
 
 - fail-fast environment validation;
 - `GET /health` process liveness;
@@ -18,7 +16,7 @@ This layer turns `apps/server` from a domain/storage package into a runnable bac
 - minimal authenticated account projection;
 - graceful process shutdown.
 
-WebSocket transport, connection ownership, reconnect deadlines, matchmaking, challenges, and bot flows remain separate later layers.
+Realtime does not introduce a second identity mechanism. `/ws` uses the same session/account boundary defined here.
 
 ## Account identity model
 
@@ -87,7 +85,7 @@ Session properties:
 
 The cookie name is `caravan_session`.
 
-Current authenticated endpoints are:
+Current authenticated HTTP endpoints are:
 
 ```text
 GET  /api/me
@@ -95,6 +93,8 @@ POST /api/logout
 ```
 
 `/api/logout` revokes only the presented session rather than globally signing the account out everywhere.
+
+The realtime runtime also resolves this cookie during WebSocket upgrade and revalidates it during the connection lifetime, so a revoked or disabled session does not remain authorized merely because a socket is still open.
 
 ## Account status
 
@@ -104,7 +104,7 @@ The initial account lifecycle supports:
 - `SUSPENDED`;
 - `BANNED`.
 
-Only active accounts may authenticate or resolve an application session. Moderation/admin tooling is not part of this PR.
+Only active accounts may authenticate or resolve an application session. Moderation/admin tooling is not part of this layer.
 
 ## HTTP security baseline
 
@@ -116,7 +116,7 @@ The Fastify runtime:
 - exposes only stable public error codes rather than exception details;
 - in production enforces the configured public Host and same-origin mutation requests.
 
-The intended deployment remains same-origin for Mini App, HTTP API, and future WebSocket traffic.
+The intended deployment remains same-origin for Mini App, HTTP API, and WebSocket traffic. The WebSocket route additionally validates `Origin` directly during upgrade.
 
 ## Mini App integration
 
@@ -126,7 +126,7 @@ The Mini App first attempts to restore an existing CARAVAN session with `/api/me
 
 This keeps Telegram APIs out of general application/game UI code and avoids issuing a new server session on every React remount when an existing cookie is valid.
 
-Vite proxies `/api` to the local backend during development.
+Vite proxies `/api` to the local backend during development. Client-side realtime transport is a later Mini App layer.
 
 ## Persistence
 
@@ -160,15 +160,15 @@ Automated coverage protects:
 
 Database-backed auth tests are mandatory in CI whenever `CARAVAN_REQUIRE_DATABASE_TESTS=1`.
 
-## Deferred to the realtime PR
+## Realtime consumer
 
-This layer deliberately does not yet implement:
+The functionality previously deferred from this layer is now implemented in [`09-authenticated-realtime-runtime.md`](09-authenticated-realtime-runtime.md):
 
 - WebSocket handshake/session authorization;
 - connection ownership/takeover;
-- match subscription/broadcasting;
+- match resync/broadcasting;
 - reconnect grace periods;
 - authoritative turn/disconnect deadline scheduling;
-- recovered deadline execution after server restart.
+- recovered lifecycle handling after server restart.
 
-Those should consume the session/account boundary defined here rather than invent another authentication mechanism.
+Matchmaking, challenges, bot flows, and client match UI remain later layers.
