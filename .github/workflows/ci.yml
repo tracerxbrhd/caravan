@@ -12,9 +12,6 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: postgresql://caravan:caravan-test@127.0.0.1:5432/caravan_test
-      CARAVAN_REQUIRE_DATABASE_TESTS: '1'
     services:
       postgres:
         image: postgres:18-alpine
@@ -40,7 +37,12 @@ jobs:
       - run: docker compose --env-file .env.production.example -f compose.production.yaml config --quiet
       - run: pnpm build
       - run: pnpm --filter @caravan/server db:migrate
+        env:
+          DATABASE_URL: postgresql://caravan:caravan-test@127.0.0.1:5432/caravan_test
       - run: pnpm verify
+        env:
+          DATABASE_URL: postgresql://caravan:caravan-test@127.0.0.1:5432/caravan_test
+          CARAVAN_REQUIRE_DATABASE_TESTS: '1'
       - run: pnpm audit --prod --audit-level high
       - name: Build production images
         run: docker compose --env-file .env.production.example -f compose.production.yaml build
