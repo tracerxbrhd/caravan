@@ -47,5 +47,6 @@ export function testConfig(databaseUrl: string): Config {
     RECONNECT_GRACE_SECONDS: 30,
     MATCHMAKING_LEASE_SECONDS: 90,
     CHALLENGE_TTL_SECONDS: 900,
+    REMATCH_TTL_SECONDS: 900,
   };
 }
