@@ -146,7 +146,7 @@ Exercise this in a safe production/staging manner where the session can be revok
 - [ ] An invalid/expired HTTP session does not leave matchmaking/challenge/rematch polling retrying forever.
 - [ ] A realtime `SESSION_EXPIRED` close does not enter an automatic WebSocket reconnect loop.
 - [ ] The Mini App returns to authentication bootstrap.
-- [ ] Reopening/refeshing from Telegram can establish a fresh session when valid Telegram launch data is available.
+- [ ] Reopening/refreshing from Telegram can establish a fresh session when valid Telegram launch data is available.
 - [ ] A transient startup/server failure presents a retry path rather than permanently caching the failure.
 
 If production-safe session revocation cannot be exercised without privileged manipulation, retain the automated integration coverage and record the manual item as not exercised rather than fabricating a pass.
