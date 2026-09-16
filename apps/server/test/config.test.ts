@@ -16,6 +16,8 @@ describe('server configuration', () => {
     expect(config.PUBLIC_ORIGIN).toBe('http://localhost:5173');
     expect(config.SESSION_HOURS).toBe(168);
     expect(config.TELEGRAM_AUTH_MAX_AGE_SECONDS).toBe(300);
+    expect(config.TURN_TIMEOUT_SECONDS).toBe(60);
+    expect(config.RECONNECT_GRACE_SECONDS).toBe(30);
   });
 
   it('fails fast when required backend identity configuration is missing', () => {
