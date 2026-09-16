@@ -84,11 +84,15 @@ curl --fail https://your-caravan-host.example/health
 
 The first command assumes the default `CARAVAN_HTTP_PORT`; use the configured port if it differs.
 
+Once public HTTPS is healthy, complete Telegram production wiring through [`production-telegram-wiring.md`](production-telegram-wiring.md). Do not register the webhook before the public origin is reachable.
+
 ## Normal deployments
 
 Use **Actions -> Deploy production -> Run workflow** and select the commit/ref intended for production.
 
-The workflow first runs the repository verification job, then deploys that exact `GITHUB_SHA`. It will stop on Compose validation, image build, migration, service health, or public health failure.
+The workflow first runs the repository verification job, then deploys that exact `GITHUB_SHA`. It will stop on Compose validation, image build, migration, service health, public health, or Telegram production-wiring failure.
+
+After public HTTPS health succeeds, the workflow runs the production bot image's Telegram wiring command. This synchronizes and verifies the webhook and default Mini App menu button without copying Telegram credentials into GitHub Actions.
 
 Do not make routine production changes by editing files inside running containers.
 
@@ -120,6 +124,8 @@ docker compose --env-file .env.production -f compose.production.yaml up -d --wai
 
 Database rollback is intentionally not automatic. Migrations should therefore be additive/backward-compatible whenever practical. If a migration itself is unsafe, stop and recover deliberately rather than running an automatic down migration against production data.
 
+Telegram wiring is idempotent and belongs to the deployed configuration rather than database state. After an application rollback, rerun the normal deployment workflow if webhook/menu-button configuration also needs to be reconciled.
+
 ## Data persistence
 
 PostgreSQL uses the `postgres_data` named Docker volume. `docker compose down` without `-v` preserves it; commands that remove volumes can destroy production data.
@@ -128,6 +134,8 @@ Off-host automated backups are not introduced by this PR. Before inviting meanin
 
 ## Telegram wiring
 
-A healthy Docker deployment is not the same as a fully wired Telegram production bot.
+Production Telegram wiring is implemented as a deploy-time operation, not a second runtime path.
 
-Webhook registration, Mini App/Menu Button configuration and the first real Telegram-account smoke test belong to the next production-wiring step. Do not invent a second bot/server deployment path for them; point Telegram at the public routes provided by this stack.
+Before the first production wiring, configure the bot's Main Mini App in BotFather to the exact `PUBLIC_ORIGIN`. The deploy workflow then uses the bot image to verify bot identity/Main Mini App presence and synchronize the webhook plus default Mini App menu button.
+
+For the manual command, credential rotation and the required two-real-account acceptance test, use [`production-telegram-wiring.md`](production-telegram-wiring.md).
