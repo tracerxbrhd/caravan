@@ -28,7 +28,11 @@ export function MatchDeadlines({
   const serverNowMs = estimatedServerNow(clockAnchor, clientMonotonicNowMs);
 
   return (
-    <section className="match-deadlines" aria-label="Authoritative match deadlines" aria-live="polite">
+    <section
+      className="match-deadlines"
+      aria-label="Authoritative match deadlines"
+      aria-live="polite"
+    >
       {notices.map((notice) => {
         const seconds = remainingDeadlineSeconds(notice.deadlineAtMs, serverNowMs);
         const urgent = seconds <= 10;
