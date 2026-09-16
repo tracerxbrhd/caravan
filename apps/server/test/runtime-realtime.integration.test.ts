@@ -75,6 +75,7 @@ describeDatabase('authenticated realtime runtime', () => {
     reconnectGraceMs: config.RECONNECT_GRACE_SECONDS * 1_000,
   });
   let app: Awaited<ReturnType<typeof buildServer>>;
+  let appClosed = false;
 
   beforeAll(async () => {
     await migrateDatabase(pool);
@@ -89,7 +90,7 @@ describeDatabase('authenticated realtime runtime', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (!appClosed) await app.close();
     await pool.end();
   });
 
@@ -344,5 +345,56 @@ describeDatabase('authenticated realtime runtime', () => {
       socketA.terminate();
       socketB.terminate();
     }
+  });
+
+  it('closes sockets for service restart without persisting player disconnect penalties', async () => {
+    const a = await authenticate(30_001, 'Restart A');
+    const b = await authenticate(30_002, 'Restart B');
+    const { matchId } = await service.createMatch({
+      participants: { A: a.profile.id, B: b.profile.id },
+    });
+    const socketA = await openSocket(a.cookie);
+    const socketB = await openSocket(b.cookie);
+
+    const firstA = await roundTrip(socketA, {
+      protocolVersion: 1,
+      type: 'RESYNC',
+      matchId,
+      commandId: '00000000-0000-4000-8000-000000000831',
+      knownStateVersion: null,
+    });
+    expect(firstA.type).toBe('SNAPSHOT');
+
+    const startedForA = nextMessage(socketA);
+    const startedForB = nextMessage(socketB);
+    socketB.send(
+      JSON.stringify({
+        protocolVersion: 1,
+        type: 'RESYNC',
+        matchId,
+        commandId: '00000000-0000-4000-8000-000000000832',
+        knownStateVersion: null,
+      }),
+    );
+    await Promise.all([startedForA, startedForB]);
+
+    const beforeShutdown = await store.load(matchId);
+    expect(beforeShutdown?.connected).toEqual({ A: true, B: true });
+    expect(beforeShutdown?.reconnectDeadlineAtMs).toEqual({ A: null, B: null });
+
+    const closedA = nextClose(socketA);
+    const closedB = nextClose(socketB);
+    await app.close();
+    appClosed = true;
+
+    await expect(Promise.all([closedA, closedB])).resolves.toEqual([
+      { code: 1012, reason: 'SERVICE_RESTART' },
+      { code: 1012, reason: 'SERVICE_RESTART' },
+    ]);
+
+    const persisted = await store.load(matchId);
+    expect(persisted?.connected).toEqual({ A: true, B: true });
+    expect(persisted?.reconnectDeadlineAtMs).toEqual({ A: null, B: null });
+    expect(persisted?.stateVersion).toBe(beforeShutdown?.stateVersion);
   });
 });
