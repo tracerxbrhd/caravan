@@ -27,21 +27,27 @@ jobs:
           from pathlib import Path
 
           table = Path('apps/miniapp/src/CardTable.tsx')
-          text = table.read_text()
-          old = """<PlayingCard
-                card={node.card}
-                target={target}
-                disabled={disabled}
-                onClick={target ? onTarget : undefined}
-              />"""
-          new = """{target ? (
-                <PlayingCard card={node.card} target disabled={disabled} onClick={onTarget} />
-              ) : (
-                <PlayingCard card={node.card} />
-              )}"""
-          if old not in text:
-              raise SystemExit('CardTable strict optional-prop snippet not found')
-          table.write_text(text.replace(old, new))
+          lines = table.read_text().splitlines()
+          marker = next((i for i, line in enumerate(lines) if 'onClick={target ? onTarget : undefined}' in line), None)
+          if marker is None:
+              raise SystemExit('CardTable optional-prop marker not found')
+          start = marker
+          while start >= 0 and '<PlayingCard' not in lines[start]:
+              start -= 1
+          end = marker
+          while end < len(lines) and '/>' not in lines[end]:
+              end += 1
+          if start < 0 or end >= len(lines):
+              raise SystemExit('CardTable PlayingCard block could not be located')
+          indent = lines[start][: len(lines[start]) - len(lines[start].lstrip())]
+          replacement = [
+              f'{indent}{{target ? (',
+              f'{indent}  <PlayingCard card={{node.card}} target disabled={{disabled}} onClick={{onTarget}} />',
+              f'{indent}) : (',
+              f'{indent}  <PlayingCard card={{node.card}} />',
+              f'{indent})}}',
+          ]
+          table.write_text('\n'.join(lines[:start] + replacement + lines[end + 1:]) + '\n')
 
           product = Path('docs/product/07-match-ux-and-tutorial.md')
           text = product.read_text()
