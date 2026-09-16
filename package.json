@@ -17,7 +17,8 @@
     "test": "vitest run --passWithNoTests",
     "test:ci": "vitest run --passWithNoTests",
     "verify": "pnpm build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:ci",
-    "dev:miniapp": "pnpm --filter @caravan/miniapp dev"
+    "dev:miniapp": "pnpm --filter @caravan/miniapp dev",
+    "start:server": "pnpm --filter @caravan/server start"
   },
   "devDependencies": {
     "@types/node": "24.13.4",
