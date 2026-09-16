@@ -31,7 +31,9 @@ describeDatabase('durable match entry', () => {
   });
 
   beforeEach(async () => {
-    await pool.query('TRUNCATE TABLE sessions, account_identities, accounts CASCADE');
+    await pool.query(
+      'TRUNCATE TABLE caravan_private_challenges, caravan_matchmaking_queue, caravan_matches, sessions, account_identities, accounts CASCADE',
+    );
   });
 
   afterAll(async () => {
