@@ -18,7 +18,8 @@
     "test:ci": "vitest run --passWithNoTests --no-file-parallelism",
     "verify": "pnpm build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:ci",
     "dev:miniapp": "pnpm --filter @caravan/miniapp dev",
-    "start:server": "pnpm --filter @caravan/server start"
+    "start:server": "pnpm --filter @caravan/server start",
+    "start:bot": "pnpm --filter @caravan/bot start"
   },
   "devDependencies": {
     "@types/node": "24.13.4",
