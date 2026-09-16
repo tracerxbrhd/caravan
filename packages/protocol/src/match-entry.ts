@@ -28,7 +28,7 @@ export const challengeStatusSchema = z.enum([
   'EXPIRED',
 ]);
 
-export const challengeViewSchema = z
+const challengeViewObjectSchema = z
   .object({
     id: challengeIdSchema,
     status: challengeStatusSchema,
@@ -37,6 +37,32 @@ export const challengeViewSchema = z
     matchId: matchIdSchema.nullable(),
   })
   .strict();
+
+export const challengeViewSchema = challengeViewObjectSchema.superRefine((challenge, context) => {
+  if (challenge.expiresAtMs <= challenge.createdAtMs) {
+    context.addIssue({
+      code: 'custom',
+      path: ['expiresAtMs'],
+      message: 'Challenge expiry must be after creation.',
+    });
+  }
+
+  if (challenge.status === 'ACCEPTED' && challenge.matchId === null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['matchId'],
+      message: 'An accepted challenge requires a match id.',
+    });
+  }
+
+  if (challenge.status !== 'ACCEPTED' && challenge.matchId !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['matchId'],
+      message: 'Only an accepted challenge may reference a match.',
+    });
+  }
+});
 
 export const createChallengeResponseSchema = z
   .object({
@@ -57,15 +83,34 @@ export const challengeResolutionSchema = z
   })
   .strict();
 
+const acceptedChallengeViewSchema = challengeViewObjectSchema.extend({
+  status: z.literal('ACCEPTED'),
+  matchId: matchIdSchema,
+});
+
 export const acceptedChallengeSchema = z
   .object({
-    challenge: challengeViewSchema.extend({
-      status: z.literal('ACCEPTED'),
-      matchId: matchIdSchema,
-    }),
+    challenge: acceptedChallengeViewSchema,
     matchId: matchIdSchema,
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.challenge.matchId !== value.matchId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['matchId'],
+        message: 'Accepted challenge match ids must agree.',
+      });
+    }
+
+    if (value.challenge.expiresAtMs <= value.challenge.createdAtMs) {
+      context.addIssue({
+        code: 'custom',
+        path: ['challenge', 'expiresAtMs'],
+        message: 'Challenge expiry must be after creation.',
+      });
+    }
+  });
 
 export type ChallengeId = z.infer<typeof challengeIdSchema>;
 export type InviteToken = z.infer<typeof inviteTokenSchema>;
