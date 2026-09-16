@@ -25,6 +25,11 @@ export interface BotServerOptions {
   readonly onProcessingError?: () => void;
 }
 
+interface StartReply {
+  readonly text: string;
+  readonly replyMarkup: SendMessageRequest['replyMarkup'];
+}
+
 function writeJson(response: ServerResponse, statusCode: number, body: unknown): void {
   response.statusCode = statusCode;
   response.setHeader('content-type', 'application/json; charset=utf-8');
@@ -61,7 +66,11 @@ function isRussian(languageCode: string | undefined): boolean {
   return languageCode?.toLowerCase().startsWith('ru') ?? false;
 }
 
-function normalLaunchButton(config: BotConfig, privateChat: boolean, russian: boolean): InlineKeyboardButton {
+function normalLaunchButton(
+  config: BotConfig,
+  privateChat: boolean,
+  russian: boolean,
+): InlineKeyboardButton {
   const text = russian ? 'Играть' : 'Play';
   if (privateChat) return { text, web_app: { url: config.PUBLIC_ORIGIN } };
   return { text, url: buildMainMiniAppLink(config.BOT_USERNAME) };
@@ -72,10 +81,7 @@ function startReply(
   context: LaunchContext,
   languageCode: string | undefined,
   privateChat: boolean,
-): SendMessageRequest['text' | 'replyMarkup'] extends never ? never : {
-  readonly text: string;
-  readonly replyMarkup: SendMessageRequest['replyMarkup'];
-} {
+): StartReply {
   const russian = isRussian(languageCode);
 
   if (context.kind === 'CHALLENGE') {
@@ -143,7 +149,8 @@ export function createBotServer(
   if (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes <= 0) {
     throw new RangeError('maxBodyBytes must be a positive safe integer.');
   }
-  const onProcessingError = options.onProcessingError ?? (() => process.stderr.write('Telegram update failed\n'));
+  const onProcessingError =
+    options.onProcessingError ?? (() => process.stderr.write('Telegram update failed\n'));
 
   return createServer(async (request, response) => {
     const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
