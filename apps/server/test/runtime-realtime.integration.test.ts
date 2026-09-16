@@ -259,4 +259,90 @@ describeDatabase('authenticated realtime runtime', () => {
       socketA3?.terminate();
     }
   });
+
+  it('lets the connected active player act while the opponent is inside reconnect grace', async () => {
+    const a = await authenticate(20_001, 'Active A');
+    const b = await authenticate(20_002, 'Active B');
+    const { matchId } = await service.createMatch({
+      participants: { A: a.profile.id, B: b.profile.id },
+    });
+    const socketA = await openSocket(a.cookie);
+    const socketB = await openSocket(b.cookie);
+
+    try {
+      const firstA = await roundTrip(socketA, {
+        protocolVersion: 1,
+        type: 'RESYNC',
+        matchId,
+        commandId: '00000000-0000-4000-8000-000000000821',
+        knownStateVersion: null,
+      });
+      expect(firstA.type).toBe('SNAPSHOT');
+
+      const startedForA = nextMessage(socketA);
+      const startedForB = nextMessage(socketB);
+      socketB.send(
+        JSON.stringify({
+          protocolVersion: 1,
+          type: 'RESYNC',
+          matchId,
+          commandId: '00000000-0000-4000-8000-000000000822',
+          knownStateVersion: null,
+        }),
+      );
+      const [snapshotA, snapshotB] = await Promise.all([startedForA, startedForB]);
+      expect(snapshotA.type).toBe('SNAPSHOT');
+      expect(snapshotB.type).toBe('SNAPSHOT');
+      if (snapshotA.type !== 'SNAPSHOT' || snapshotB.type !== 'SNAPSHOT') {
+        throw new Error('Expected match-start snapshots.');
+      }
+
+      const activeSeat = snapshotA.snapshot.game.activePlayer;
+      const active = activeSeat === 'A' ? a : b;
+      const disconnected = activeSeat === 'A' ? b : a;
+      const activeSocket = activeSeat === 'A' ? socketA : socketB;
+      const disconnectedSocket = activeSeat === 'A' ? socketB : socketA;
+
+      const disconnectedSnapshot = await service.disconnectPlayer(matchId, disconnected.profile.id);
+      expect(disconnectedSnapshot).not.toBeNull();
+
+      const before = await service.getSnapshot(matchId, active.profile.id);
+      if (before === null) throw new Error('Expected active-player snapshot after peer disconnect.');
+      expect(before.status).toBe('ACTIVE');
+      expect(before.connected[activeSeat]).toBe(true);
+      expect(before.connected[activeSeat === 'A' ? 'B' : 'A']).toBe(false);
+      expect(before.turnDeadlineAtMs).not.toBeNull();
+      expect(before.reconnectDeadlineAtMs[activeSeat === 'A' ? 'B' : 'A']).not.toBeNull();
+
+      const action = before.game.legalActions[0];
+      if (action === undefined) throw new Error('Expected a legal action for the active player.');
+
+      const peerBroadcast = nextMessage(disconnectedSocket);
+      const response = nextMessage(activeSocket);
+      activeSocket.send(
+        JSON.stringify({
+          protocolVersion: 1,
+          type: 'GAME_ACTION',
+          matchId,
+          commandId: '00000000-0000-4000-8000-000000000823',
+          expectedStateVersion: before.stateVersion,
+          action,
+        }),
+      );
+
+      const [accepted, broadcast] = await Promise.all([response, peerBroadcast]);
+      expect(accepted.type).toBe('SNAPSHOT');
+      expect(broadcast.type).toBe('SNAPSHOT');
+      if (accepted.type !== 'SNAPSHOT' || broadcast.type !== 'SNAPSHOT') {
+        throw new Error('Expected an accepted action and peer broadcast during reconnect grace.');
+      }
+      expect(accepted.snapshot.stateVersion).toBe(before.stateVersion + 1);
+      expect(accepted.snapshot.status).toBe('ACTIVE');
+      expect(broadcast.snapshot.stateVersion).toBe(accepted.snapshot.stateVersion);
+      expect(broadcast.snapshot.connected[activeSeat === 'A' ? 'B' : 'A']).toBe(false);
+    } finally {
+      socketA.terminate();
+      socketB.terminate();
+    }
+  });
 });
