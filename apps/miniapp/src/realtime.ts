@@ -2,10 +2,10 @@ import {
   PROTOCOL_VERSION,
   parseServerMessage,
   type CommandRejectionCode,
-  type GameAction,
   type MatchId,
   type MatchSnapshot,
   type ServerMessage,
+  type WireGameAction,
 } from '@caravan/protocol';
 
 export type MatchConnectionState = 'CONNECTING' | 'ONLINE' | 'RECONNECTING' | 'STOPPED';
@@ -26,7 +26,7 @@ export interface MatchRealtimeOptions {
 export interface MatchRealtimeConnection {
   close(): void;
   requestControl(): boolean;
-  sendAction(action: GameAction): boolean;
+  sendAction(action: WireGameAction): boolean;
   surrender(): boolean;
   currentSnapshot(): MatchSnapshot | null;
 }
