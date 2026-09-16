@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented initially by `packages/protocol` in PR #4.
+Implemented initially by `packages/protocol` in PR #4 and consumed by the authenticated realtime runtime in PR #8.
 
 This document defines the CARAVAN client/server wire boundary. The protocol is intentionally narrow: it transports player intent and sanitized authoritative projections without becoming a second rules engine or exposing privileged match state.
 
@@ -12,7 +12,7 @@ Every client command and server message carries `protocolVersion`.
 
 The initial protocol version is `1`.
 
-Unknown versions must fail explicitly rather than being interpreted as the current version. Breaking wire changes require a deliberate protocol-version decision; additive backward-compatible fields should still be evaluated carefully because schemas are strict by default.
+Unknown versions fail explicitly rather than being interpreted as the current version. Breaking wire changes require a deliberate protocol-version decision; additive backward-compatible fields should still be evaluated carefully because schemas are strict by default.
 
 ## Identifiers and concurrency
 
@@ -22,7 +22,7 @@ State-changing commands carry:
 - `commandId` — unique command identifier used for retry/idempotency handling;
 - `expectedStateVersion` — the authoritative version the client believes it is acting on.
 
-The protocol validates identifier shape and non-negative versions, but the server owns semantic checks such as account/seat ownership, duplicate-command handling, stale-version rejection, deadlines, and transactional commit order.
+The protocol validates identifier shape and non-negative versions, but the server owns semantic checks such as account/seat ownership, controlling-connection ownership, duplicate-command handling, stale-version rejection, deadlines, and transactional commit order.
 
 `stateVersion` is a server concurrency/persistence version. It is not the same concept as the game engine's `actionSequence`.
 
@@ -34,7 +34,7 @@ The initial command union contains:
 - `SURRENDER` — server match-lifecycle intent, deliberately outside `GameAction`;
 - `RESYNC` — requests a fresh authoritative projection and may provide the last known state version.
 
-Clients never send replacement game state, deck order, hand contents, winner claims, timers, or server-side lifecycle state.
+Clients never send replacement game state, deck order, hand contents, winner claims, timers, connection state, or server-side lifecycle state.
 
 Schemas are strict. Unknown properties are rejected instead of silently stripped so accidental attempts to expand client authority are visible during development.
 
@@ -86,7 +86,7 @@ Carries one sanitized authoritative `MatchSnapshot`.
 `commandId` is nullable:
 
 - when present, the snapshot can acknowledge the command that produced it;
-- when null, it may represent an unsolicited authoritative update or resync state.
+- when null, it may represent an unsolicited authoritative update or broadcast state.
 
 Rather than defining a separate accepted-command payload that can drift from snapshot state, successful state changes converge on a fresh authoritative snapshot.
 
@@ -101,19 +101,23 @@ Carries:
 - an optional stable game-rule error code when rejection came from the engine;
 - an optional sanitized fresh snapshot for immediate resynchronization.
 
+The realtime layer additionally uses stable rejection codes for transport-owned conditions such as `MATCH_NOT_READY` and `CONNECTION_NOT_OWNER`. These conditions do not become card-game rules.
+
 Human-facing/internal exception strings are not part of the stable protocol contract.
 
 ### `PROTOCOL_ERROR`
 
 Represents malformed messages or unsupported protocol versions without leaking internal exception details.
 
+The WebSocket runtime uses this message for invalid JSON/schema input and explicit unsupported protocol versions rather than guessing at client intent.
+
 ## Strict runtime validation
 
 `packages/protocol` uses Zod schemas for runtime boundaries in addition to TypeScript types.
 
-TypeScript protects compile-time callers; it does not make network input trustworthy. WebSocket/HTTP adapters must parse unknown input through the exported schemas before using it.
+TypeScript protects compile-time callers; it does not make network input trustworthy. WebSocket/HTTP adapters parse unknown input through exported schemas before using it.
 
-Likewise, outbound message construction should be validated in tests and at high-risk boundaries rather than assuming any server object is automatically safe to serialize.
+Likewise, outbound message construction is validated at high-risk boundaries and in tests rather than assuming any server object is automatically safe to serialize.
 
 ## Hidden information is a protocol invariant
 
@@ -121,11 +125,11 @@ Strict schema rejection is defense in depth, not the primary projection mechanis
 
 The authoritative server must still call the game engine's explicit `projectForPlayer(state, viewer)` boundary. Protocol schemas then verify that the resulting wire shape contains only allowed fields.
 
-Raw `GameEvent` values must not be broadcast blindly because private draw events may contain card identities that are legal only for one seat. A future realtime adapter must explicitly translate event visibility or rely on fresh per-player snapshots.
+Raw `GameEvent` values are not broadcast blindly because private draw events may contain card identities that are legal only for one seat. The implemented realtime adapter sends fresh per-recipient snapshots instead.
 
 ## Current non-goals
 
-This initial protocol intentionally does not define:
+The protocol intentionally does not define:
 
 - Telegram authentication/session payloads;
 - matchmaking or private-challenge HTTP contracts;
@@ -133,7 +137,7 @@ This initial protocol intentionally does not define:
 - chat/reactions;
 - persistence snapshot format;
 - database models;
-- WebSocket connection lifecycle implementation;
+- socket IDs or process-local connection-control maps;
 - binary protocol/Protobuf;
 - compression/version negotiation beyond the explicit protocol version.
 
@@ -141,7 +145,7 @@ Those should be added only when their owning implementation arrives.
 
 ## Testing contract
 
-Protocol tests must cover at minimum:
+Protocol/realtime tests must cover at minimum:
 
 - valid engine `PlayerView` parsing;
 - command protocol/version/identifier validation;
@@ -151,4 +155,6 @@ Protocol tests must cover at minimum:
 - rejection of injected opponent hand/future-deck data;
 - active/finished snapshot-result consistency;
 - stable engine rule-error codes remaining accepted by the wire schema;
-- JSON-serializable sanitized snapshots containing no hidden card identities.
+- JSON-serializable sanitized snapshots containing no hidden card identities;
+- real WebSocket delivery remaining viewer-specific;
+- malformed or unsupported-version WebSocket messages producing stable protocol errors.
