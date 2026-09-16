@@ -36,7 +36,7 @@ describeDatabase('authenticated server runtime', () => {
 
   beforeAll(async () => {
     await migrateDatabase(pool);
-    app = await buildServer(pool, config);
+    app = await buildServer(pool, config, { realtime: false });
   });
 
   beforeEach(async () => {
