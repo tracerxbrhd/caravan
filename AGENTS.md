@@ -12,6 +12,14 @@ Before substantial changes:
 
 Accepted repository documentation is the long-term source of truth. Prefer newer and more specific accepted decisions when documents conflict. Direct instructions for the current task take precedence. Do not describe planned behavior as implemented.
 
+## README policy
+
+The repository root `README.md` is the public-facing front page of CARAVAN, not an internal technical document.
+
+Keep it product-oriented: what the game is, why it is interesting, current public status, player-facing features, visual identity, supported/planned platforms, and essential public notices.
+
+Do not turn the root README into an architecture index, repository tree dump, implementation plan, dependency list, internal workflow guide, or engineering changelog. Put technical detail in `docs/architecture/`, contributor/development detail in `docs/development/`, and product decisions in `docs/product/`.
+
 ## UNDERGAMMON reference
 
 `tracerxbrhd/undergammon` is a proven reference for Telegram auth, accounts, matchmaking, challenges, realtime, reconnect, persistence, rating/history, CI, and deployment.
