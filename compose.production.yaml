@@ -1,0 +1,103 @@
+name: caravan-production
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-caravan}
+      POSTGRES_USER: ${POSTGRES_USER:-caravan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-caravan} -d ${POSTGRES_DB:-caravan}']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      target: server
+      args:
+        VITE_TELEGRAM_BOT_USERNAME: ${BOT_USERNAME:?Set BOT_USERNAME}
+    environment:
+      NODE_ENV: production
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set PUBLIC_ORIGIN}
+      BOT_TOKEN: ${BOT_TOKEN:?Set BOT_TOKEN}
+      SESSION_HOURS: ${SESSION_HOURS:-168}
+      TELEGRAM_AUTH_MAX_AGE_SECONDS: ${TELEGRAM_AUTH_MAX_AGE_SECONDS:-300}
+      TURN_TIMEOUT_SECONDS: ${TURN_TIMEOUT_SECONDS:-60}
+      RECONNECT_GRACE_SECONDS: ${RECONNECT_GRACE_SECONDS:-30}
+      MATCHMAKING_LEASE_SECONDS: ${MATCHMAKING_LEASE_SECONDS:-90}
+      CHALLENGE_TTL_SECONDS: ${CHALLENGE_TTL_SECONDS:-900}
+      REMATCH_TTL_SECONDS: ${REMATCH_TTL_SECONDS:-900}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: .
+      target: bot
+      args:
+        VITE_TELEGRAM_BOT_USERNAME: ${BOT_USERNAME:?Set BOT_USERNAME}
+    environment:
+      NODE_ENV: production
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set PUBLIC_ORIGIN}
+      BOT_TOKEN: ${BOT_TOKEN:?Set BOT_TOKEN}
+      BOT_USERNAME: ${BOT_USERNAME:?Set BOT_USERNAME}
+      BOT_HOST: 0.0.0.0
+      BOT_PORT: 3001
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:?Set TELEGRAM_WEBHOOK_SECRET}
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        VITE_TELEGRAM_BOT_USERNAME: ${BOT_USERNAME:?Set BOT_USERNAME}
+    ports:
+      - '127.0.0.1:${CARAVAN_HTTP_PORT:-18081}:80'
+    depends_on:
+      server:
+        condition: service_healthy
+      bot:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1/health']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
