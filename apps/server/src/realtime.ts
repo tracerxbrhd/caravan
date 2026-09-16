@@ -22,6 +22,7 @@ const MAX_MESSAGES_PER_WINDOW = 30;
 const HEARTBEAT_INTERVAL_MS = 10_000;
 const DEADLINE_SWEEP_INTERVAL_MS = 1_000;
 const CONTROL_REPLACED_CLOSE_CODE = 4001;
+const SOCKET_SHUTDOWN_GRACE_MS = 250;
 
 interface AuthenticatedUpgrade {
   readonly accountId: string;
@@ -109,8 +110,40 @@ export async function installRealtimeRuntime(
       if (deadlineSweep !== null) clearInterval(deadlineSweep);
       controls.clear();
 
-      for (const connection of connections.values()) {
-        connection.socket.close(1012, 'SERVICE_RESTART');
+      const closingSockets = [...connections.values()].map((connection) => connection.socket);
+      const closeHandshake =
+        closingSockets.length === 0
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              let remaining = closingSockets.length;
+              let settled = false;
+              const finish = () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                resolve();
+              };
+              const onClosed = () => {
+                if (settled) return;
+                remaining -= 1;
+                if (remaining === 0) finish();
+              };
+              const timer = setTimeout(finish, SOCKET_SHUTDOWN_GRACE_MS);
+              timer.unref();
+
+              for (const socket of closingSockets) {
+                if (socket.readyState === 3) onClosed();
+                else socket.once('close', onClosed);
+              }
+            });
+
+      for (const socket of closingSockets) {
+        socket.close(1012, 'SERVICE_RESTART');
+      }
+      await closeHandshake;
+
+      for (const socket of closingSockets) {
+        if (socket.readyState !== 3) socket.terminate();
       }
 
       await new Promise<void>((resolve, reject) => {
