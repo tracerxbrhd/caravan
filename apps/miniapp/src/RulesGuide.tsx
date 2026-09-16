@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 type Suit = 'CLUBS' | 'DIAMONDS' | 'HEARTS' | 'SPADES';
 type GuideRank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | '★';
@@ -74,7 +74,7 @@ function Example({
 }: {
   readonly title: string;
   readonly caption: string;
-  readonly children: React.ReactNode;
+  readonly children: ReactNode;
 }) {
   return (
     <figure className="rules-example">
@@ -96,7 +96,7 @@ function RuleSection({
   readonly id: string;
   readonly kicker: string;
   readonly title: string;
-  readonly children: React.ReactNode;
+  readonly children: ReactNode;
 }) {
   return (
     <section className="rules-section" aria-labelledby={`${id}-title`}>
@@ -133,10 +133,16 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
             <p className="eyebrow">How to play</p>
             <h1 id="rules-title">CARAVAN rules</h1>
             <p className="muted">
-              Build three routes, contest the opposing lanes, and finish with at least two lane wins.
+              Build three routes, contest the opposing lanes, and finish with at least two lane
+              wins.
             </p>
           </div>
-          <button ref={closeButton} type="button" className="button button--quiet" onClick={onClose}>
+          <button
+            ref={closeButton}
+            type="button"
+            className="button button--quiet"
+            onClick={onClose}
+          >
             Close
           </button>
         </header>
@@ -153,14 +159,15 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
         <div className="rules-guide__content">
           <RuleSection id="rules-goal" kicker="1 · Objective" title="Win the trade lanes">
             <p>
-              Each player owns three routes. Route 1 faces Route 1, Route 2 faces Route 2, and Route 3
-              faces Route 3. A route is competitive when its value is between <strong>21 and 26</strong>
+              Each player owns three routes. Route 1 faces Route 1, Route 2 faces Route 2, and Route
+              3 faces Route 3. A route is competitive when its value is between{' '}
+              <strong>21 and 26</strong>
               inclusive.
             </p>
             <p>
-              A lane belongs to the only in-range route, or to the higher route when both are in range.
-              A tie stays unresolved. The match ends only when all three lanes have a non-tied owner;
-              the player owning at least two lanes wins.
+              A lane belongs to the only in-range route, or to the higher route when both are in
+              range. A tie stays unresolved. The match ends only when all three lanes have a
+              non-tied owner; the player owning at least two lanes wins.
             </p>
             <Example
               title="A route enters range at 21"
@@ -179,8 +186,9 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
 
           <RuleSection id="rules-opening" kicker="2 · Opening" title="Seed all three routes first">
             <p>
-              You start with <strong>8 cards</strong>. During your first three turns you must place one
-              value card on each of your three empty routes. Players alternate these opening turns.
+              You start with <strong>8 cards</strong>. During your first three turns you must place
+              one value card on each of your three empty routes. Players alternate these opening
+              turns.
             </p>
             <p>
               During opening setup there are no modifiers, discards, route disbands, or replacement
@@ -201,16 +209,21 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
             </Example>
           </RuleSection>
 
-          <RuleSection id="rules-values" kicker="3 · Value cards" title="Build direction — or break it with suit">
+          <RuleSection
+            id="rules-values"
+            kicker="3 · Value cards"
+            title="Build direction — or break it with suit"
+          >
             <p>
-              Ace counts as 1; cards 2 through 10 use their printed value. The second card on a route
-              establishes ascending or descending direction. Later value cards normally have to keep
-              moving strictly in that direction.
+              Ace counts as 1; cards 2 through 10 use their printed value. The second card on a
+              route establishes ascending or descending direction. Later value cards normally have
+              to keep moving strictly in that direction.
             </p>
             <p>
-              There is one important override: a card matching the route's current active suit may be
-              played even when it crosses against the current numeric direction. If it does, the route
-              takes the direction implied by that new adjacent pair. Equal adjacent ranks are never legal.
+              There is one important override: a card matching the route's current active suit may
+              be played even when it crosses against the current numeric direction. If it does, the
+              route takes the direction implied by that new adjacent pair. Equal adjacent ranks are
+              never legal.
             </p>
             <Example
               title="Same suit can reverse direction"
@@ -227,19 +240,23 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
             </Example>
           </RuleSection>
 
-          <RuleSection id="rules-modifiers" kicker="4 · Face cards" title="Attach modifiers to value cards">
+          <RuleSection
+            id="rules-modifiers"
+            kicker="4 · Face cards"
+            title="Attach modifiers to value cards"
+          >
             <p>
-              Jacks, Queens, Kings, and Jokers target value cards rather than standing alone. Unless a
-              rule says otherwise, they may target either player's public route cards. A value card can
-              hold at most three attached modifiers.
+              Jacks, Queens, Kings, and Jokers target value cards rather than standing alone. Unless
+              a rule says otherwise, they may target either player's public route cards. A value
+              card can hold at most three attached modifiers.
             </p>
 
             <div className="rules-face-grid">
               <article className="rules-face-card">
                 <h3>King · doubles contribution</h3>
                 <p>
-                  Each surviving King doubles only its target card's contribution. Multiple Kings stack
-                  exponentially: one King is ×2, two Kings are ×4, three Kings are ×8.
+                  Each surviving King doubles only its target card's contribution. Multiple Kings
+                  stack exponentially: one King is ×2, two Kings are ×4, three Kings are ×8.
                 </p>
                 <Example title="King on 8" caption="The 8 now contributes 16 to its route total.">
                   <div className="guide-attachment">
@@ -253,8 +270,9 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
               <article className="rules-face-card">
                 <h3>Jack · removes a whole card group</h3>
                 <p>
-                  A Jack removes its target value card, every modifier already attached to that card,
-                  and the Jack itself. Removed cards return to their original owners' public discard piles.
+                  A Jack removes its target value card, every modifier already attached to that
+                  card, and the Jack itself. Removed cards return to their original owners' public
+                  discard piles.
                 </p>
                 <Example
                   title="Jack clears the target group"
@@ -272,8 +290,9 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
               <article className="rules-face-card">
                 <h3>Queen · reverses and sets suit</h3>
                 <p>
-                  A Queen can attach only to the terminal value card. It reverses an established route
-                  direction and makes the Queen's suit the active suit while that card remains terminal.
+                  A Queen can attach only to the terminal value card. It reverses an established
+                  route direction and makes the Queen's suit the active suit while that card remains
+                  terminal.
                 </p>
                 <Example
                   title="Queen takes control of the route"
@@ -294,9 +313,9 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
               <article className="rules-face-card">
                 <h3>Joker · one-time table-wide removal</h3>
                 <p>
-                  The target itself is protected. On an Ace, the Joker removes every other value card
-                  with that printed suit. On 2–10, it removes every other value card with that printed
-                  rank across all six routes. Attached modifiers leave with removed cards.
+                  The target itself is protected. On an Ace, the Joker removes every other value
+                  card with that printed suit. On 2–10, it removes every other value card with that
+                  printed rank across all six routes. Attached modifiers leave with removed cards.
                 </p>
                 <Example
                   title="Joker on a 4"
@@ -316,32 +335,42 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
             </div>
           </RuleSection>
 
-          <RuleSection id="rules-turn" kicker="5 · Normal turn" title="Choose exactly one primary action">
+          <RuleSection
+            id="rules-turn"
+            kicker="5 · Normal turn"
+            title="Choose exactly one primary action"
+          >
             <p>After opening setup, each turn is one of these:</p>
             <ul className="rules-list">
               <li>
-                <strong>Play one card.</strong> Playing a hand card resolves its effect, then draws one
-                replacement if the deck can supply it.
+                <strong>Play one card.</strong> Playing a hand card resolves its effect, then draws
+                one replacement if the deck can supply it.
               </li>
               <li>
-                <strong>Discard one hand card.</strong> It becomes public in your discard pile, then you
-                draw one replacement if possible.
+                <strong>Discard one hand card.</strong> It becomes public in your discard pile, then
+                you draw one replacement if possible.
               </li>
               <li>
-                <strong>Disband one of your own non-empty routes.</strong> Every card on that route leaves
-                play and returns to its original owner's discard pile. Disbanding does not draw a card.
+                <strong>Disband one of your own non-empty routes.</strong> Every card on that route
+                leaves play and returns to its original owner's discard pile. Disbanding does not
+                draw a card.
               </li>
             </ul>
             <p>
-              CARAVAN highlights only legal choices on the live table. Selecting a card shows the exact
-              routes or value cards the server currently allows it to target.
+              CARAVAN highlights only legal choices on the live table. Selecting a card shows the
+              exact routes or value cards the server currently allows it to target.
             </p>
           </RuleSection>
 
-          <RuleSection id="rules-finish" kicker="6 · Route control and victory" title="All three lanes must resolve">
+          <RuleSection
+            id="rules-finish"
+            kicker="6 · Route control and victory"
+            title="All three lanes must resolve"
+          >
             <p>
-              Route status is <strong>light</strong> below 21, <strong>in range</strong> from 21 through 26,
-              and <strong>overloaded</strong> above 26. Light and overloaded routes cannot own their lane.
+              Route status is <strong>light</strong> below 21, <strong>in range</strong> from 21
+              through 26, and <strong>overloaded</strong> above 26. Light and overloaded routes
+              cannot own their lane.
             </p>
             <Example
               title="Higher in-range route owns the lane"
@@ -355,13 +384,15 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
               <span className="guide-note">Lane owner: 24</span>
             </Example>
             <p>
-              Normal victory is checked only after the acting player's whole action and effects resolve.
-              If all three lanes have non-tied owners, whoever owns at least two wins the match.
+              Normal victory is checked only after the acting player's whole action and effects
+              resolve. If all three lanes have non-tied owners, whoever owns at least two wins the
+              match.
             </p>
             <p>
-              The deck is finite and discard piles are not reshuffled. If a play or discard requires a
-              replacement draw but your deck is empty, the action resolves first and normal victory is
-              checked; if that action did not already win the match for you, you lose by deck exhaustion.
+              The deck is finite and discard piles are not reshuffled. If a play or discard requires
+              a replacement draw but your deck is empty, the action resolves first and normal
+              victory is checked; if that action did not already win the match for you, you lose by
+              deck exhaustion.
             </p>
           </RuleSection>
 

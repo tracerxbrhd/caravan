@@ -15,9 +15,7 @@
   margin: 0 auto;
   border: 1px solid rgb(220 185 126 / 18%);
   border-radius: 24px;
-  background:
-    linear-gradient(135deg, rgb(255 247 226 / 5%), transparent 35%),
-    rgb(33 27 21 / 98%);
+  background: linear-gradient(135deg, rgb(255 247 226 / 5%), transparent 35%), rgb(33 27 21 / 98%);
   box-shadow: 0 28px 80px rgb(0 0 0 / 42%);
   overflow: hidden;
 }
@@ -147,9 +145,7 @@
   padding: 15px;
   border: 1px solid rgb(220 185 126 / 14%);
   border-radius: 16px;
-  background:
-    linear-gradient(135deg, rgb(125 83 39 / 12%), transparent 60%),
-    rgb(8 7 6 / 45%);
+  background: linear-gradient(135deg, rgb(125 83 39 / 12%), transparent 60%), rgb(8 7 6 / 45%);
   overflow: hidden;
 }
 
@@ -216,9 +212,7 @@
   justify-content: center;
   border: 1px solid rgb(37 28 20 / 40%);
   border-radius: 9px;
-  background:
-    linear-gradient(145deg, rgb(255 255 255 / 75%), rgb(232 219 190 / 90%)),
-    #efe2c5;
+  background: linear-gradient(145deg, rgb(255 255 255 / 75%), rgb(232 219 190 / 90%)), #efe2c5;
   color: #24201a;
   box-shadow:
     0 5px 12px rgb(0 0 0 / 22%),
@@ -329,9 +323,7 @@
 }
 
 .rules-summary {
-  background:
-    linear-gradient(135deg, rgb(121 85 43 / 12%), transparent 58%),
-    rgb(16 13 11 / 68%);
+  background: linear-gradient(135deg, rgb(121 85 43 / 12%), transparent 58%), rgb(16 13 11 / 68%);
 }
 
 .rules-help-button {

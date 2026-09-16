@@ -78,7 +78,7 @@ CARAVAN should not try to win by accumulating the largest feature list before la
 The intended differentiation is the combination of:
 
 1. deterministic and well-tested rules;
-2. an interactive tutorial that makes the game understandable;
+2. a concise visual rules guide that makes the game understandable without blocking entry to play;
 3. high-quality tactile card-table UX;
 4. robust server-authoritative multiplayer and reconnect;
 5. effortless Telegram friend challenges;

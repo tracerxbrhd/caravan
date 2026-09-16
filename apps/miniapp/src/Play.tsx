@@ -271,8 +271,8 @@ export function Play({
               </button>
             </div>
             <p className="footnote">
-              Rules are always available here and from the live table. Reading them is optional before
-              matchmaking.
+              Rules are always available here and from the live table. Reading them is optional
+              before matchmaking.
             </p>
           </section>
         )}

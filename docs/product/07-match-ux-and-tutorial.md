@@ -1,8 +1,8 @@
-# 07. Match UX and Tutorial Contract
+# 07. Match UX and Rules Guide Contract
 
 ## Status
 
-Accepted as the interaction contract for the CARAVAN match experience. The competitive tap-select/tap-target table foundation is implemented; richer confirmed-transition choreography, sound/haptics, and the interactive tutorial remain follow-up work.
+Accepted as the interaction contract for the CARAVAN match experience. The competitive tap-select/tap-target table and visual rules guide are implemented; richer confirmed-transition choreography and sound/haptics remain follow-up work.
 
 The purpose of this document is to keep the client feeling like a coherent digital card table while keeping the game client non-authoritative.
 
@@ -237,79 +237,20 @@ Do not hide the table immediately behind a full-screen result before the player 
 
 For a no-contest/infrastructure abort, do not visually blame either player.
 
-## Tutorial philosophy
+## Rules guide
 
-The tutorial is a playable sequence, not a rulebook slideshow.
+CARAVAN uses an optional text-and-visual rules guide instead of a separate scripted tutorial. It should make the game understandable without creating a second gameplay path that can drift away from competitive matches.
 
-Each lesson should use:
+The guide should:
 
-```text
-small goal
--> constrained legal choices
--> player acts
--> immediate visual result
--> one short explanation
-```
+- use short sections rather than one wall of prose;
+- pair difficult rules with original card illustrations/examples;
+- cover objective, opening, value-card ordering, suit override, face cards, normal-turn choices, lane ownership, victory, and deck exhaustion;
+- remain available from Play and the live table;
+- never pause, replace, or mutate the authoritative match when opened during play;
+- use the canonical rules in `05-game-rules.md` as its source of truth.
 
-Text should explain what the player just observed rather than dumping future rules in advance.
-
-The tutorial uses original wording and deterministic scripted states derived from the canonical rule spec.
-
-## Tutorial sequence
-
-### Lesson 1 — The objective
-
-Show the three opposing lanes and teach the 21-26 target range using simple value cards.
-
-The player should finish one route themselves.
-
-### Lesson 2 — Direction
-
-Teach that after the opening cards a route develops ascending/descending order.
-
-Show one legal directional card and one visibly illegal equal/wrong-direction example.
-
-### Lesson 3 — Suit override
-
-Give the player a same-suit card that can legally reverse the numeric direction.
-
-Make the direction change visible immediately.
-
-### Lesson 4 — King and Jack
-
-Use a King to change a route value, then use a Jack in a controlled situation to remove a card group.
-
-Teach both self-help and offensive targeting conceptually without requiring a full match.
-
-### Lesson 5 — Queen and Joker
-
-Demonstrate Queen direction/suit control on the terminal card.
-
-Demonstrate one Joker effect with several clearly highlighted affected cards so the global removal is understandable.
-
-### Lesson 6 — Winning a match
-
-Give a short scripted endgame with three lane pairs, including one contested/tied lane.
-
-The player must resolve the board so all three lanes have owners and win at least two.
-
-This lesson should teach why "two good routes" is not by itself the end condition while another lane remains unresolved.
-
-## Tutorial skip/replay
-
-A player familiar with the rules may skip tutorial onboarding.
-
-The tutorial must remain replayable later from help/learn surfaces.
-
-Skipping tutorial must not grant competitive advantage or alter card availability.
-
-## Tutorial architecture
-
-The tutorial may run a deterministic local/scripted engine scenario because it does not represent a competitive authoritative match.
-
-However, tutorial rules must call the same game-engine rule functions where practical rather than maintaining a second simplified implementation.
-
-The tutorial should not require a live opponent or matchmaking service.
+Reading the guide is optional before matchmaking. Familiar players should be able to enter a match immediately.
 
 ## Accessibility and legibility
 
