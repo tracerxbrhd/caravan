@@ -9,12 +9,14 @@ import {
 } from '@caravan/protocol';
 
 export type MatchConnectionState = 'CONNECTING' | 'ONLINE' | 'RECONNECTING' | 'STOPPED';
+export type MatchConnectionStopReason = 'CONTROL_REPLACED' | 'SESSION_EXPIRED';
 
 export interface MatchRealtimeHandlers {
   onConnectionState(state: MatchConnectionState): void;
-  onSnapshot(snapshot: MatchSnapshot): void;
+  onSnapshot(snapshot: MatchSnapshot, serverTimeMs: number): void;
   onRejected?(code: CommandRejectionCode): void;
   onProtocolError?(): void;
+  onConnectionStopped?(reason: MatchConnectionStopReason): void;
 }
 
 export interface MatchRealtimeOptions {
@@ -31,6 +33,9 @@ export interface MatchRealtimeConnection {
   currentSnapshot(): MatchSnapshot | null;
 }
 
+const CONTROL_REPLACED_CLOSE_CODE = 4001;
+const SESSION_POLICY_CLOSE_CODE = 1008;
+
 function defaultWebSocketUrl(): string {
   return `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 }
@@ -42,6 +47,7 @@ export function connectMatch(
 ): MatchRealtimeConnection {
   let socket: WebSocket | undefined;
   let stopped = false;
+  let pausedForControlReplacement = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let reconnectDelay = options.reconnectBaseMs ?? 500;
   const maxReconnectDelay = options.reconnectMaxMs ?? 10_000;
@@ -54,7 +60,7 @@ export function connectMatch(
     return true;
   };
 
-  const requestControl = (): boolean =>
+  const sendResync = (): boolean =>
     send({
       protocolVersion: PROTOCOL_VERSION,
       type: 'RESYNC',
@@ -66,13 +72,13 @@ export function connectMatch(
   const receive = (message: ServerMessage): void => {
     if (message.type === 'SNAPSHOT') {
       latestSnapshot = message.snapshot;
-      handlers.onSnapshot(message.snapshot);
+      handlers.onSnapshot(message.snapshot, message.serverTimeMs);
       return;
     }
     if (message.type === 'COMMAND_REJECTED') {
       if (message.snapshot !== undefined) {
         latestSnapshot = message.snapshot;
-        handlers.onSnapshot(message.snapshot);
+        handlers.onSnapshot(message.snapshot, message.serverTimeMs);
       }
       handlers.onRejected?.(message.code);
       return;
@@ -80,14 +86,14 @@ export function connectMatch(
     handlers.onProtocolError?.();
   };
 
-  const open = (): void => {
-    if (stopped) return;
+  function open(): void {
+    if (stopped || pausedForControlReplacement) return;
     handlers.onConnectionState(latestSnapshot === null ? 'CONNECTING' : 'RECONNECTING');
     socket = new WebSocket(url);
     socket.onopen = () => {
       reconnectDelay = options.reconnectBaseMs ?? 500;
       handlers.onConnectionState('ONLINE');
-      requestControl();
+      sendResync();
     };
     socket.onmessage = (event) => {
       try {
@@ -99,12 +105,37 @@ export function connectMatch(
       }
     };
     socket.onerror = () => socket?.close();
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       if (stopped) return;
+
+      if (event.code === CONTROL_REPLACED_CLOSE_CODE || event.reason === 'CONTROL_REPLACED') {
+        pausedForControlReplacement = true;
+        handlers.onConnectionState('STOPPED');
+        handlers.onConnectionStopped?.('CONTROL_REPLACED');
+        return;
+      }
+
+      if (event.code === SESSION_POLICY_CLOSE_CODE && event.reason === 'SESSION_EXPIRED') {
+        stopped = true;
+        handlers.onConnectionState('STOPPED');
+        handlers.onConnectionStopped?.('SESSION_EXPIRED');
+        return;
+      }
+
       handlers.onConnectionState('RECONNECTING');
       timer = setTimeout(open, reconnectDelay);
       reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay);
     };
+  }
+
+  const requestControl = (): boolean => {
+    if (stopped) return false;
+    if (pausedForControlReplacement) {
+      pausedForControlReplacement = false;
+      open();
+      return true;
+    }
+    return sendResync();
   };
 
   open();
@@ -112,6 +143,7 @@ export function connectMatch(
   return {
     close: () => {
       stopped = true;
+      pausedForControlReplacement = false;
       if (timer !== undefined) clearTimeout(timer);
       socket?.close();
       handlers.onConnectionState('STOPPED');
