@@ -11,12 +11,20 @@ import {
   sessionAccount,
 } from './accounts.js';
 import type { Config } from './config.js';
+import { MatchService } from './match-service.js';
+import { PostgresMatchStore } from './postgres-match-store.js';
+import { installRealtimeRuntime } from './realtime.js';
 
 const telegramAuthBodySchema = z
   .object({
     initData: z.string().min(1).max(12_000),
   })
   .strict();
+
+export interface BuildServerOptions {
+  readonly realtime?: boolean;
+  readonly matchService?: MatchService;
+}
 
 function publicErrorCode(error: unknown): string {
   if (error instanceof z.ZodError) return 'INVALID_INPUT';
@@ -31,7 +39,7 @@ function statusForError(code: string): number {
   return 400;
 }
 
-export async function buildServer(pool: pg.Pool, config: Config) {
+export async function buildServer(pool: pg.Pool, config: Config, options: BuildServerOptions = {}) {
   const app = Fastify({
     logger: {
       level: config.NODE_ENV === 'test' ? 'silent' : 'info',
@@ -109,6 +117,16 @@ export async function buildServer(pool: pg.Pool, config: Config) {
     reply.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
     return { ok: true as const };
   });
+
+  if (options.realtime !== false) {
+    const matchService =
+      options.matchService ??
+      new MatchService(new PostgresMatchStore(pool), {
+        turnTimeoutMs: config.TURN_TIMEOUT_SECONDS * 1_000,
+        reconnectGraceMs: config.RECONNECT_GRACE_SECONDS * 1_000,
+      });
+    await installRealtimeRuntime(app, pool, config, matchService);
+  }
 
   return app;
 }

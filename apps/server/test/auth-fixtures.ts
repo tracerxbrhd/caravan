@@ -43,5 +43,7 @@ export function testConfig(databaseUrl: string): Config {
     PUBLIC_ORIGIN: 'http://localhost:5173',
     SESSION_HOURS: 24,
     TELEGRAM_AUTH_MAX_AGE_SECONDS: 300,
+    TURN_TIMEOUT_SECONDS: 60,
+    RECONNECT_GRACE_SECONDS: 30,
   };
 }
