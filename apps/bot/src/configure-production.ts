@@ -4,10 +4,7 @@ import { TelegramClient } from './telegram.js';
 
 try {
   const config = loadBotConfig();
-  const result = await configureProductionTelegram(
-    config,
-    new TelegramClient(config.BOT_TOKEN),
-  );
+  const result = await configureProductionTelegram(config, new TelegramClient(config.BOT_TOKEN));
   process.stdout.write(
     `Telegram production wiring verified for @${result.username}: ${result.webhookUrl}; menu -> ${result.menuButtonUrl}; pending updates: ${result.pendingUpdateCount}\n`,
   );
