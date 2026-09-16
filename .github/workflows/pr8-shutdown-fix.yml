@@ -1,0 +1,100 @@
+name: PR8 Shutdown Fix
+
+on:
+  push:
+    branches: [feat/pr8-realtime-runtime]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/pr8-realtime-runtime
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install --global --allow-scripts=pnpm pnpm@12.4.1
+      - run: pnpm install --frozen-lockfile
+      - name: Apply bounded websocket shutdown
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/server/src/realtime.ts')
+          text = path.read_text()
+          text = text.replace(
+              "const CONTROL_REPLACED_CLOSE_CODE = 4001;\n",
+              "const CONTROL_REPLACED_CLOSE_CODE = 4001;\nconst SOCKET_SHUTDOWN_GRACE_MS = 250;\n",
+              1,
+          )
+          old = """      for (const connection of connections.values()) {
+        connection.socket.close(1012, 'SERVICE_RESTART');
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        app.websocketServer.close((error) => {
+          if (error === undefined) resolve();
+          else reject(error);
+        });
+      });
+"""
+          new = """      const closingSockets = [...connections.values()].map((connection) => connection.socket);
+      const closeHandshake =
+        closingSockets.length === 0
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              let remaining = closingSockets.length;
+              let settled = false;
+              const finish = () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                resolve();
+              };
+              const onClosed = () => {
+                if (settled) return;
+                remaining -= 1;
+                if (remaining === 0) finish();
+              };
+              const timer = setTimeout(finish, SOCKET_SHUTDOWN_GRACE_MS);
+              timer.unref();
+
+              for (const socket of closingSockets) {
+                if (socket.readyState === 3) onClosed();
+                else socket.once('close', onClosed);
+              }
+            });
+
+      for (const socket of closingSockets) {
+        socket.close(1012, 'SERVICE_RESTART');
+      }
+      await closeHandshake;
+
+      for (const socket of closingSockets) {
+        if (socket.readyState !== 3) socket.terminate();
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        app.websocketServer.close((error) => {
+          if (error === undefined) resolve();
+          else reject(error);
+        });
+      });
+"""
+          if old not in text:
+              raise SystemExit('expected preClose block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - run: pnpm exec prettier --write apps/server/src/realtime.ts
+      - name: Commit shutdown fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/server/src/realtime.ts
+          git commit -m "fix(server): bound websocket shutdown handshake"
+          git push origin HEAD:feat/pr8-realtime-runtime
