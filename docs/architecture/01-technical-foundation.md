@@ -2,9 +2,9 @@
 
 ## Status
 
-Accepted as the initial architecture direction. The repository scaffold now implements the agreed pnpm/TypeScript monorepo boundaries; concrete runtime behavior is added only through later focused changes.
+Accepted as the initial architecture direction. The repository scaffold implements the agreed pnpm/TypeScript monorepo boundaries; concrete runtime behavior is added only through focused changes.
 
-As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The Mini App contains only a minimal React/Vite shell. Bot, server, protocol, and game-engine runtime/domain behavior remain intentionally unimplemented rather than represented by fake placeholders.
+As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The deterministic game engine is implemented and `packages/protocol` now implements the initial typed/runtime-validated wire contracts. The Mini App remains a minimal React/Vite shell, while bot and server runtime behavior remain intentionally unimplemented rather than represented by fake placeholders.
 
 ## Reference architecture
 
@@ -48,16 +48,19 @@ It must not depend on:
 - wall-clock time;
 - presentation/animation code.
 
-The engine should explicitly model:
+The implemented engine models:
 
-- cards and card identity;
+- cards and stable card identity/ownership;
 - decks, hands, discard state, and public table state;
 - legal actions;
 - special-card effects;
 - turn/state transitions;
-- victory resolution;
+- victory and deck-exhaustion resolution;
 - invariant validation;
-- serialization/schema evolution where required.
+- rule-domain events;
+- explicit player-safe projections.
+
+Durable snapshot restore/schema migration remains a persistence-layer concern to add when persistence arrives.
 
 Randomness is injected. The engine must not be the live entropy authority.
 
@@ -82,9 +85,13 @@ A modular monolith is preferred initially. Do not add microservices, Redis, queu
 
 ## Protocol
 
-`packages/protocol` contains only contracts genuinely shared between clients and the server: versioned command/event envelopes, sanitized player views, stable enums/identifiers, and boundary schemas.
+`packages/protocol` contains only contracts genuinely shared between clients and the server: versioned command/server-message envelopes, sanitized player views, stable identifiers/error codes, match lifecycle result shapes, and strict runtime boundary schemas.
+
+The initial protocol is implemented with TypeScript + Zod and depends on the game engine only for stable shared domain contracts. It deliberately has no wire schema for privileged `CaravanGameState`; snapshots carry only sanitized `PlayerView` plus server-owned public lifecycle metadata.
 
 It must not become a generic `shared` dumping ground and must not duplicate game rules.
+
+See [`05-protocol-contracts.md`](05-protocol-contracts.md) for the normative wire-boundary decisions.
 
 ## Data
 

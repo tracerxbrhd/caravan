@@ -1,6 +1,6 @@
 # Development
 
-CARAVAN has its initial pnpm/TypeScript workspace scaffold and now includes the deterministic `packages/game-engine` rules implementation. Backend, bot, protocol, authentication, persistence, realtime multiplayer, and production deployment behavior remain intentionally unimplemented unless later documentation says otherwise.
+CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, and initial typed/runtime-validated `packages/protocol` wire contracts. Backend, bot, authentication, persistence, realtime multiplayer, and production deployment behavior remain intentionally unimplemented unless later documentation says otherwise.
 
 ## Before implementation work
 
@@ -18,6 +18,7 @@ For gameplay, server, protocol, or match-client implementation, the required bas
 8. [`../architecture/02-realtime-hidden-information-and-rng.md`](../architecture/02-realtime-hidden-information-and-rng.md)
 9. [`../architecture/03-client-ux-and-portability.md`](../architecture/03-client-ux-and-portability.md)
 10. [`../architecture/04-game-domain-model.md`](../architecture/04-game-domain-model.md)
+11. [`../architecture/05-protocol-contracts.md`](../architecture/05-protocol-contracts.md)
 
 `product/04-market-and-competitive-context.md` is useful product context but is not an implementation contract.
 
@@ -34,6 +35,7 @@ The verified baseline follows the proven UNDERGAMMON architecture/tooling direct
 - Prettier 3;
 - Vitest 4;
 - fast-check 4 for property tests;
+- Zod 4 for runtime protocol validation;
 - React 19 + Vite 8 for the Mini App shell.
 
 Dependency upgrades should be deliberate and verified rather than mixed into unrelated gameplay work.
@@ -48,14 +50,16 @@ apps/
 
 packages/
   game-engine/   implemented deterministic CARAVAN rules engine
-  protocol/      client/server contract package boundary
+  protocol/      implemented initial client/server wire contracts
 ```
 
 `packages/game-engine` owns the canonical deterministic card-rule behavior. It exposes initialization from server-supplied deck order/starting seat, legal actions, state transitions, route/lane evaluation, invariant checking, rule-domain events, and player-safe projections.
 
-`bot`, `server`, and `protocol` still intentionally contain no fake runtime/domain implementation. Their package/build boundaries exist so later focused PRs can add real behavior without redesigning the workspace.
+`packages/protocol` owns strict versioned wire schemas for gameplay/surrender/resync commands, sanitized `PlayerView` snapshots, match lifecycle results, and stable rejection/error payloads. It deliberately exposes no wire schema for privileged `CaravanGameState`.
 
-The engine does not generate live randomness and does not own surrender, timeout, reconnect, persistence, WebSocket broadcasting, or server command idempotency/state-version semantics.
+`bot` and `server` still intentionally contain no fake runtime/domain implementation. Their package/build boundaries exist so later focused PRs can add real behavior without redesigning the workspace.
+
+The engine does not generate live randomness and does not own surrender, timeout, reconnect, persistence, WebSocket broadcasting, or server command idempotency/state-version semantics. The protocol describes those boundaries but does not implement their server-side semantics.
 
 ## Setup
 
@@ -91,7 +95,7 @@ pnpm verify
 
 `pnpm format` writes formatting changes when needed.
 
-The game engine has substantive unit/regression and property-based tests. Vitest still permits zero tests globally only because other scaffold-only packages/apps do not yet have behavior worth testing. Do not add meaningless placeholder tests merely to increase a count.
+The game engine and protocol have substantive automated tests. Vitest still permits zero tests globally only because scaffold-only apps do not yet have behavior worth testing. Do not add meaningless placeholder tests merely to increase a count.
 
 ## Game-engine testing baseline
 
@@ -106,6 +110,20 @@ Property tests protect cross-cutting invariants including:
 - hidden-information projection not exposing opponent hands or future deck order.
 
 Rule changes should update `docs/product/05-game-rules.md` and tests in the same PR rather than allowing documentation and executable behavior to drift.
+
+## Protocol testing baseline
+
+Changes to client/server contracts should add or update tests in `packages/protocol/test/`.
+
+Protocol tests protect:
+
+- strict protocol/version/identifier validation;
+- client commands never carrying replacement game state;
+- real engine `PlayerView` remaining wire-compatible;
+- privileged authoritative state remaining non-serializable through protocol schemas;
+- opponent hand and future deck data being rejected as unknown wire fields;
+- server match lifecycle results remaining separate from pure rule-engine outcomes;
+- stable engine rule error codes remaining synchronized with rejection payloads.
 
 ## CI
 
