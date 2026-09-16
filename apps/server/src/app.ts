@@ -1,6 +1,5 @@
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
-import websocket from '@fastify/websocket';
 import Fastify from 'fastify';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -57,7 +56,6 @@ export async function buildServer(pool: pg.Pool, config: Config, options: BuildS
 
   await app.register(cookie);
   await app.register(rateLimit, { max: 120, timeWindow: '1 minute' });
-  await app.register(websocket, { options: { maxPayload: 16_384 } });
 
   const expectedOrigin = new URL(config.PUBLIC_ORIGIN);
   app.addHook('onRequest', async (request, reply) => {
