@@ -10,6 +10,8 @@ const configSchema = z
     PUBLIC_ORIGIN: z.string().url().default('http://localhost:5173'),
     SESSION_HOURS: z.coerce.number().int().min(1).max(720).default(168),
     TELEGRAM_AUTH_MAX_AGE_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
+    TURN_TIMEOUT_SECONDS: z.coerce.number().int().min(15).max(600).default(60),
+    RECONNECT_GRACE_SECONDS: z.coerce.number().int().min(5).max(300).default(30),
   })
   .passthrough()
   .superRefine((value, ctx) => {
