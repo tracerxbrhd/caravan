@@ -68,7 +68,11 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
 
         {snapshot === null ? (
           <section className="panel match-loading">
-            <div className="route-spinner" aria-hidden="true"><span /><span /><span /></div>
+            <div className="route-spinner" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
             <h2>Securing the table</h2>
             <p className="muted">Requesting a fresh player-safe snapshot from the server.</p>
           </section>
@@ -95,9 +99,15 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
                   <article className="lane-card" key={route}>
                     <span className="lane-card__name">Route {route + 1}</span>
                     <div className="lane-values">
-                      <span><small>You</small>{game.players[viewer].routes[route as 0 | 1 | 2].value}</span>
+                      <span>
+                        <small>You</small>
+                        {game.players[viewer].routes[route as 0 | 1 | 2].value}
+                      </span>
                       <span className="lane-vs">vs</span>
-                      <span><small>Rival</small>{game.players[opponent].routes[route as 0 | 1 | 2].value}</span>
+                      <span>
+                        <small>Rival</small>
+                        {game.players[opponent].routes[route as 0 | 1 | 2].value}
+                      </span>
                     </div>
                   </article>
                 ))}
@@ -105,7 +115,9 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
             )}
 
             <section className="panel transport-note">
-              <h2>{snapshot.status === 'FINISHED' ? 'Match finished' : 'Table transport is live'}</h2>
+              <h2>
+                {snapshot.status === 'FINISHED' ? 'Match finished' : 'Table transport is live'}
+              </h2>
               <p className="muted">
                 {snapshot.status === 'FINISHED'
                   ? `Result: ${snapshot.result?.reason ?? 'complete'}.`
@@ -113,9 +125,15 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
               </p>
               {rejection !== null && <p className="notice notice--warn">{rejection}</p>}
               {rejection?.includes('Another window') === true && (
-                <button className="button" onClick={() => realtime.current?.requestControl()}>Take control here</button>
+                <button className="button" onClick={() => realtime.current?.requestControl()}>
+                  Take control here
+                </button>
               )}
-              {snapshot.status === 'FINISHED' && <button className="button button--primary" onClick={onExit}>Return to Play</button>}
+              {snapshot.status === 'FINISHED' && (
+                <button className="button button--primary" onClick={onExit}>
+                  Return to Play
+                </button>
+              )}
             </section>
           </>
         )}

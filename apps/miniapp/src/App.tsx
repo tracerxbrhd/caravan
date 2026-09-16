@@ -38,7 +38,9 @@ export function App() {
   }, []);
 
   if (state.status === 'ready') {
-    return <Play account={state.account} launchContext={parseLaunchParam(platform.launchParam())} />;
+    return (
+      <Play account={state.account} launchContext={parseLaunchParam(platform.launchParam())} />
+    );
   }
 
   const status =

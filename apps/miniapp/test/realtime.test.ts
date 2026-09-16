@@ -47,7 +47,11 @@ afterEach(() => {
 describe('match realtime connection', () => {
   it('claims control with RESYNC and does not send gameplay before a snapshot', () => {
     const states: string[] = [];
-    const connection = connectMatch(MATCH_ID, { onConnectionState: (state) => states.push(state), onSnapshot: () => undefined }, { url: 'ws://example/ws' });
+    const connection = connectMatch(
+      MATCH_ID,
+      { onConnectionState: (state) => states.push(state), onSnapshot: () => undefined },
+      { url: 'ws://example/ws' },
+    );
     const socket = FakeWebSocket.instances[0]!;
     socket.open();
 
@@ -65,7 +69,11 @@ describe('match realtime connection', () => {
 
   it('reconnects with bounded backoff after socket loss', () => {
     const states: string[] = [];
-    const connection = connectMatch(MATCH_ID, { onConnectionState: (state) => states.push(state), onSnapshot: () => undefined }, { url: 'ws://example/ws', reconnectBaseMs: 500, reconnectMaxMs: 1000 });
+    const connection = connectMatch(
+      MATCH_ID,
+      { onConnectionState: (state) => states.push(state), onSnapshot: () => undefined },
+      { url: 'ws://example/ws', reconnectBaseMs: 500, reconnectMaxMs: 1000 },
+    );
     const first = FakeWebSocket.instances[0]!;
     first.open();
     first.close();

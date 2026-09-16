@@ -146,9 +146,13 @@ export function declineChallenge(inviteToken: InviteToken): Promise<ChallengeRes
 }
 
 export function cancelChallenge(challengeId: ChallengeId): Promise<ChallengeResolution> {
-  return requestParsed(`/api/challenges/${encodeURIComponent(challengeId)}/cancel`, challengeResolutionSchema, {
-    method: 'POST',
-  });
+  return requestParsed(
+    `/api/challenges/${encodeURIComponent(challengeId)}/cancel`,
+    challengeResolutionSchema,
+    {
+      method: 'POST',
+    },
+  );
 }
 
 let bootstrapPromise: Promise<AccountProfile> | undefined;

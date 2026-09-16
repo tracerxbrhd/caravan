@@ -249,7 +249,8 @@ export function Play({
             <p className="section-kicker">Play</p>
             <h2>Choose your route</h2>
             <p className="muted">
-              Casual finds the next available opponent. A private challenge creates a single-use match invite.
+              Casual finds the next available opponent. A private challenge creates a single-use
+              match invite.
             </p>
             {flow.notice !== undefined && <p className="notice">{flow.notice}</p>}
             <div className="action-stack">
@@ -260,7 +261,9 @@ export function Play({
                 Challenge a friend
               </button>
             </div>
-            <p className="footnote">Interactive tutorial arrives in its own focused client PR before external testing.</p>
+            <p className="footnote">
+              Interactive tutorial arrives in its own focused client PR before external testing.
+            </p>
           </section>
         )}
 
@@ -268,12 +271,22 @@ export function Play({
           <section className="panel play-card">
             <p className="section-kicker">Private challenge</p>
             <h2>A rival is waiting</h2>
-            <p className="muted">Accepting creates the authoritative match only after your CARAVAN session is verified.</p>
+            <p className="muted">
+              Accepting creates the authoritative match only after your CARAVAN session is verified.
+            </p>
             <div className="action-stack">
-              <button className="button button--primary" disabled={busy} onClick={() => acceptInbound(flow.inviteToken)}>
+              <button
+                className="button button--primary"
+                disabled={busy}
+                onClick={() => acceptInbound(flow.inviteToken)}
+              >
                 Accept challenge
               </button>
-              <button className="button button--quiet" disabled={busy} onClick={() => declineInbound(flow.inviteToken)}>
+              <button
+                className="button button--quiet"
+                disabled={busy}
+                onClick={() => declineInbound(flow.inviteToken)}
+              >
                 Decline
               </button>
             </div>
@@ -282,11 +295,20 @@ export function Play({
 
         {flow.kind === 'QUEUE' && (
           <section className="panel play-card queue-card" aria-live="polite">
-            <div className="route-spinner" aria-hidden="true"><span /><span /><span /></div>
+            <div className="route-spinner" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
             <p className="section-kicker">Casual matchmaking</p>
             <h2>Looking for a merchant</h2>
-            <p className="muted">Your place is held by a renewable server lease. You can safely survive brief network hiccups.</p>
-            <button className="button button--quiet" disabled={busy} onClick={stopQueue}>Leave queue</button>
+            <p className="muted">
+              Your place is held by a renewable server lease. You can safely survive brief network
+              hiccups.
+            </p>
+            <button className="button button--quiet" disabled={busy} onClick={stopQueue}>
+              Leave queue
+            </button>
           </section>
         )}
 
@@ -294,9 +316,13 @@ export function Play({
           <section className="panel play-card" aria-live="polite">
             <p className="section-kicker">Private challenge</p>
             <h2>Invite ready</h2>
-            <p className="muted">Send the link to one opponent. CARAVAN will move you into the match when they accept.</p>
+            <p className="muted">
+              Send the link to one opponent. CARAVAN will move you into the match when they accept.
+            </p>
             {opponentCopy === null ? (
-              <p className="notice notice--warn">Set VITE_TELEGRAM_BOT_USERNAME to enable Telegram sharing.</p>
+              <p className="notice notice--warn">
+                Set VITE_TELEGRAM_BOT_USERNAME to enable Telegram sharing.
+              </p>
             ) : (
               <div className="invite-box">
                 <span className="invite-box__label">Telegram invite</span>
@@ -306,7 +332,10 @@ export function Play({
             <div className="action-stack">
               {opponentCopy !== null && (
                 <>
-                  <button className="button button--primary" onClick={() => platform.shareUrl(opponentCopy, 'Join my CARAVAN match.')}>
+                  <button
+                    className="button button--primary"
+                    onClick={() => platform.shareUrl(opponentCopy, 'Join my CARAVAN match.')}
+                  >
                     Share in Telegram
                   </button>
                   <button
@@ -317,7 +346,11 @@ export function Play({
                   </button>
                 </>
               )}
-              <button className="button button--quiet" disabled={busy} onClick={() => stopChallenge(flow.challenge.id)}>
+              <button
+                className="button button--quiet"
+                disabled={busy}
+                onClick={() => stopChallenge(flow.challenge.id)}
+              >
                 Cancel challenge
               </button>
             </div>
@@ -329,7 +362,9 @@ export function Play({
             <p className="section-kicker">Could not continue</p>
             <h2>Route interrupted</h2>
             <p className="muted">{flow.message}</p>
-            <button className="button" onClick={() => setFlow({ kind: 'HOME' })}>Back to Play</button>
+            <button className="button" onClick={() => setFlow({ kind: 'HOME' })}>
+              Back to Play
+            </button>
           </section>
         )}
       </section>
