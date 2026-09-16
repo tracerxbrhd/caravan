@@ -109,6 +109,8 @@ function RuleSection({
 
 export function RulesGuide({ onClose }: { onClose(): void }) {
   const closeButton = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -116,14 +118,14 @@ export function RulesGuide({ onClose }: { onClose(): void }) {
     closeButton.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') onCloseRef.current();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="rules-overlay" role="dialog" aria-modal="true" aria-labelledby="rules-title">
