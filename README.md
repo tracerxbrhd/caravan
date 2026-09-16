@@ -50,6 +50,7 @@ The implementation is expected to use a pnpm TypeScript monorepo unless an accep
 - [`docs/product/01-product-foundation.md`](docs/product/01-product-foundation.md) — product vision, goals, scope, and non-goals.
 - [`docs/product/02-player-experience-and-platform-strategy.md`](docs/product/02-player-experience-and-platform-strategy.md) — player experience, tutorial, tactile presentation, and platform path.
 - [`docs/product/03-brand-and-ip-boundaries.md`](docs/product/03-brand-and-ip-boundaries.md) — original identity and IP constraints.
+- [`docs/product/04-market-and-competitive-context.md`](docs/product/04-market-and-competitive-context.md) — dated competitor snapshot and validation rationale.
 - [`docs/architecture/01-technical-foundation.md`](docs/architecture/01-technical-foundation.md) — initial technical direction and boundaries.
 - [`docs/architecture/02-realtime-hidden-information-and-rng.md`](docs/architecture/02-realtime-hidden-information-and-rng.md) — authoritative multiplayer, hidden information, recovery, and shuffle security.
 - [`docs/architecture/03-client-ux-and-portability.md`](docs/architecture/03-client-ux-and-portability.md) — client architecture, animation principles, and Android/iOS portability.
