@@ -4,6 +4,7 @@ import type { AuthoritativeMatch } from './match-types.js';
 export interface MatchStore {
   create(match: AuthoritativeMatch): Promise<void>;
   load(matchId: MatchId): Promise<AuthoritativeMatch | null>;
+  listActiveMatchIds(): Promise<readonly MatchId[]>;
   compareAndSet(
     matchId: MatchId,
     expectedStateVersion: StateVersion,
@@ -28,6 +29,12 @@ export class InMemoryMatchStore implements MatchStore {
   public async load(matchId: MatchId): Promise<AuthoritativeMatch | null> {
     const match = this.#matches.get(matchId);
     return match === undefined ? null : cloneMatch(match);
+  }
+
+  public async listActiveMatchIds(): Promise<readonly MatchId[]> {
+    return [...this.#matches.values()]
+      .filter((match) => match.status === 'ACTIVE')
+      .map((match) => match.id);
   }
 
   public async compareAndSet(
