@@ -4,7 +4,7 @@ CARAVAN is a competitive online card game built around Caravan gameplay principl
 
 The first release target is a Telegram Mini App: a low-friction way to learn the game, challenge friends, and play real matches without installing a separate client. CARAVAN is being designed from the start so the same game can later expand to Android, iOS, and the web.
 
-> **Status:** pre-development. Product, rules, UX, and architecture foundations are being defined before implementation begins.
+> **Status:** pre-development. Product, rules, UX, and architecture foundations are documented; gameplay implementation has not started yet.
 
 ## What CARAVAN aims to be
 
