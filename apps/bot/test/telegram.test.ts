@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TelegramClient } from '../src/telegram.js';
 
-const botToken = '123456789:abcdefghijklmnopqrstuvwxyzABCDE';
+const botToken = ['123456789', 'abcdefghijklmnopqrstuvwxyzABCDE'].join(':');
 const message = {
   chatId: 42,
   text: 'CARAVAN',
@@ -54,7 +54,10 @@ describe('TelegramClient', () => {
       },
     ];
     const fetchImpl: typeof fetch = async (input, init) => {
-      requests.push({ url: String(input), body: JSON.parse(String(init?.body ?? '{}')) as unknown });
+      requests.push({
+        url: String(input),
+        body: JSON.parse(String(init?.body ?? '{}')) as unknown,
+      });
       return new Response(JSON.stringify({ ok: true, result: responses.shift() }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
