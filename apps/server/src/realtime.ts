@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import websocket from '@fastify/websocket';
 import {
   PROTOCOL_VERSION,
   clientCommandSchema,
@@ -97,6 +98,29 @@ export async function installRealtimeRuntime(
   const controls = new Map<string, string>();
   const upgrades = new WeakMap<FastifyRequest, AuthenticatedUpgrade>();
   let shuttingDown = false;
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let deadlineSweep: ReturnType<typeof setInterval> | null = null;
+
+  await app.register(websocket, {
+    options: { maxPayload: 16_384 },
+    preClose: async () => {
+      shuttingDown = true;
+      if (heartbeat !== null) clearInterval(heartbeat);
+      if (deadlineSweep !== null) clearInterval(deadlineSweep);
+      controls.clear();
+
+      for (const connection of connections.values()) {
+        connection.socket.close(1012, 'SERVICE_RESTART');
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        app.websocketServer.close((error) => {
+          if (error === undefined) resolve();
+          else reject(error);
+        });
+      });
+    },
+  });
 
   const stillAuthorized = async (connection: RealtimeConnection): Promise<boolean> => {
     try {
@@ -360,7 +384,7 @@ export async function installRealtimeRuntime(
   );
 
   let heartbeatRunning = false;
-  const heartbeat = setInterval(() => {
+  heartbeat = setInterval(() => {
     if (heartbeatRunning) return;
     heartbeatRunning = true;
     void (async () => {
@@ -387,7 +411,7 @@ export async function installRealtimeRuntime(
   heartbeat.unref();
 
   let deadlineSweepRunning = false;
-  const deadlineSweep = setInterval(() => {
+  deadlineSweep = setInterval(() => {
     if (deadlineSweepRunning) return;
     deadlineSweepRunning = true;
     void (async () => {
@@ -403,14 +427,4 @@ export async function installRealtimeRuntime(
     });
   }, DEADLINE_SWEEP_INTERVAL_MS);
   deadlineSweep.unref();
-
-  app.addHook('onClose', async () => {
-    shuttingDown = true;
-    clearInterval(heartbeat);
-    clearInterval(deadlineSweep);
-    controls.clear();
-    for (const connection of connections.values()) {
-      connection.socket.close(1012, 'SERVICE_RESTART');
-    }
-  });
 }
