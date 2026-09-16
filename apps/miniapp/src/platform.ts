@@ -62,13 +62,7 @@ function browserVibrationAvailable(): boolean {
 function browserVibration(cue: HapticCue): void {
   if (!browserVibrationAvailable()) return;
   const pattern =
-    cue === 'SUCCESS'
-      ? [12, 35, 20]
-      : cue === 'ERROR'
-        ? [25, 30, 25]
-        : cue === 'MEDIUM'
-          ? 18
-          : 8;
+    cue === 'SUCCESS' ? [12, 35, 20] : cue === 'ERROR' ? [25, 30, 25] : cue === 'MEDIUM' ? 18 : 8;
   navigator.vibrate(pattern);
 }
 
