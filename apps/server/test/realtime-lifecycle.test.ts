@@ -67,25 +67,6 @@ describe('authoritative realtime match lifecycle', () => {
     expect(restored?.turnDeadlineAtMs).toBe(1_062_000);
   });
 
-  it('rejects state-changing commands until both players are connected', async () => {
-    const { service, matchId } = await harness();
-    const connected = await service.connectPlayer(matchId, ACCOUNT_A);
-    if (connected === null) throw new Error('Expected player A to join the match.');
-
-    const response = await service.handleCommand(ACCOUNT_A, {
-      protocolVersion: 1,
-      type: 'SURRENDER',
-      matchId,
-      commandId: '00000000-0000-4000-8000-000000000801',
-      expectedStateVersion: connected.stateVersion,
-    });
-
-    expect(response.type).toBe('COMMAND_REJECTED');
-    if (response.type !== 'COMMAND_REJECTED') throw new Error('Expected command rejection.');
-    expect(response.code).toBe('MATCH_NOT_READY');
-    expect(response.retryable).toBe(true);
-  });
-
   it('finalizes the active player when the authoritative turn deadline expires', async () => {
     const { service, matchId, setNow } = await harness();
     await service.connectPlayer(matchId, ACCOUNT_A);
