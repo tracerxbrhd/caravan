@@ -1,5 +1,14 @@
 import type { MatchSnapshot, WireGameAction, WirePlayerView } from '@caravan/protocol';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { playConfirmedFeedback, playSelectionFeedback, unlockPresentationAudio } from './feedback.js';
+import { platform } from './platform.js';
+import {
+  cardTransitionName,
+  deriveTableFeedbackCue,
+  loadPresentationPreferences,
+  savePresentationPreferences,
+  type PresentationPreferences,
+} from './presentation.js';
 import {
   cardInteraction,
   discardAction,
@@ -16,6 +25,11 @@ type Seat = WirePlayerView['viewer'];
 type PublicCard = WirePlayerView['hand'][number];
 type RouteView = WirePlayerView['players']['A']['routes'][number];
 type RouteCardView = RouteView['cards'][number];
+type CardPresentationStyle = CSSProperties & {
+  '--fan-angle'?: string;
+  '--fan-lift'?: string;
+  viewTransitionName?: string;
+};
 
 interface CardTableProps {
   readonly snapshot: MatchSnapshot;
@@ -74,12 +88,32 @@ function cardClass(card: PublicCard): string {
   return `playing-card playing-card--${suit}`;
 }
 
+function transitionStyle(cardId: string): CardPresentationStyle {
+  return { viewTransitionName: cardTransitionName(cardId) };
+}
+
+function handCardStyle(index: number, count: number): CardPresentationStyle {
+  const midpoint = (count - 1) / 2;
+  const offset = index - midpoint;
+  const angle = Math.max(-7, Math.min(7, offset * 2.2));
+  const lift = Math.min(7, Math.abs(offset) * 1.2);
+  return {
+    '--fan-angle': `${angle}deg`,
+    '--fan-lift': `${lift}px`,
+  };
+}
+
+function routeValueStyle(seat: Seat, routeIndex: RouteIndex): CSSProperties {
+  return { viewTransitionName: `caravan-route-value-${seat}-${routeIndex}` };
+}
+
 function PlayingCard({
   card,
   selected = false,
   selectable = false,
   target = false,
   disabled = false,
+  style,
   onClick,
 }: {
   readonly card: PublicCard;
@@ -87,6 +121,7 @@ function PlayingCard({
   readonly selectable?: boolean;
   readonly target?: boolean;
   readonly disabled?: boolean;
+  readonly style?: CardPresentationStyle;
   readonly onClick?: () => void;
 }) {
   const className = [
@@ -97,6 +132,7 @@ function PlayingCard({
   ]
     .filter(Boolean)
     .join(' ');
+  const presentationStyle = { ...transitionStyle(card.id), ...style };
   const content = (
     <>
       <span className="playing-card__corner">
@@ -115,7 +151,11 @@ function PlayingCard({
 
   if (onClick === undefined) {
     return (
-      <div className={className} aria-label={`${rankLabel(card)} ${suitName(card)}`}>
+      <div
+        className={className}
+        style={presentationStyle}
+        aria-label={`${rankLabel(card)} ${suitName(card)}`}
+      >
         {content}
       </div>
     );
@@ -125,6 +165,7 @@ function PlayingCard({
     <button
       type="button"
       className={className}
+      style={presentationStyle}
       aria-label={`${rankLabel(card)} ${suitName(card)}${target ? ', legal target' : ''}`}
       aria-pressed={selected}
       disabled={disabled}
@@ -132,6 +173,22 @@ function PlayingCard({
     >
       {content}
     </button>
+  );
+}
+
+function DiscardPile({ cards, label }: { readonly cards: readonly PublicCard[]; readonly label: string }) {
+  const visibleCards = cards.slice(-3);
+  return (
+    <div className="discard-pile" aria-label={`${label} discard pile, ${cards.length} cards`}>
+      <div className="discard-pile__cards" aria-hidden="true">
+        {visibleCards.length === 0 ? (
+          <span className="discard-pile__empty">Discard</span>
+        ) : (
+          visibleCards.map((card) => <PlayingCard key={card.id} card={card} />)
+        )}
+      </div>
+      <strong className="discard-pile__count">{cards.length}</strong>
+    </div>
   );
 }
 
@@ -159,6 +216,7 @@ function RouteCardNode({
             <div
               className="modifier-chip"
               key={modifier.id}
+              style={transitionStyle(modifier.id)}
               title={`${rankLabel(modifier)} ${suitName(modifier)}`}
             >
               <span>{rankLabel(modifier)}</span>
@@ -218,7 +276,7 @@ function RouteStrip({
       <header className="route-strip__header">
         <span>{label}</span>
         <div className="route-metrics">
-          <strong>{route.value}</strong>
+          <strong style={routeValueStyle(seat, routeIndex)}>{route.value}</strong>
           <span className={`route-status route-status--${route.status.toLowerCase()}`}>
             {routeStatusLabel(route)}
           </span>
@@ -341,6 +399,10 @@ export function CardTable({
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [confirmDisband, setConfirmDisband] = useState<RouteIndex | null>(null);
   const [confirmSurrender, setConfirmSurrender] = useState(false);
+  const [preferences, setPreferences] = useState<PresentationPreferences>(loadPresentationPreferences);
+  const preferencesRef = useRef(preferences);
+  const previousSnapshot = useRef<MatchSnapshot | null>(null);
+  preferencesRef.current = preferences;
 
   const interaction = useMemo(
     () => (selectedCardId === null ? null : cardInteraction(legalActions, selectedCardId)),
@@ -352,8 +414,21 @@ export function CardTable({
     setConfirmDisband(null);
   }, [game.actionSequence, selectedCardId, selectable]);
 
+  useEffect(() => {
+    const cue = deriveTableFeedbackCue(previousSnapshot.current, snapshot);
+    previousSnapshot.current = snapshot;
+    if (cue !== null) playConfirmedFeedback(cue, preferencesRef.current);
+  }, [snapshot]);
+
   const disabled = !connectionReady || pending || snapshot.status !== 'ACTIVE';
   const yourTurn = snapshot.status === 'ACTIVE' && game.activePlayer === viewer;
+  const hapticsAvailable = platform.hapticsAvailable();
+
+  const updatePreferences = (next: PresentationPreferences): void => {
+    preferencesRef.current = next;
+    setPreferences(next);
+    savePresentationPreferences(next);
+  };
 
   const submit = (action: WireGameAction): boolean => {
     if (disabled) return false;
@@ -377,7 +452,7 @@ export function CardTable({
   };
 
   return (
-    <div className="card-table">
+    <div className="card-table" data-motion={preferences.motion.toLowerCase()}>
       <section className="table-opponent" aria-label="Opponent area">
         <div className="player-ribbon">
           <div>
@@ -389,14 +464,17 @@ export function CardTable({
             <span>Discard {game.players[opponent].discardPile.length}</span>
           </div>
         </div>
-        <div
-          className="opponent-hand"
-          aria-label={`${game.players[opponent].handSize} hidden cards`}
-        >
-          {Array.from({ length: Math.min(game.players[opponent].handSize, 8) }, (_, index) => (
-            <span className="card-back" key={index} />
-          ))}
-          <strong>{game.players[opponent].handSize}</strong>
+        <div className="opponent-piles">
+          <DiscardPile cards={game.players[opponent].discardPile} label="Opponent" />
+          <div
+            className="opponent-hand"
+            aria-label={`${game.players[opponent].handSize} hidden cards`}
+          >
+            {Array.from({ length: Math.min(game.players[opponent].handSize, 8) }, (_, index) => (
+              <span className="card-back" key={index} />
+            ))}
+            <strong>{game.players[opponent].handSize}</strong>
+          </div>
         </div>
       </section>
 
@@ -468,7 +546,7 @@ export function CardTable({
 
       <section className="hand-zone" aria-label="Your hand">
         <div className="hand-fan">
-          {game.hand.map((card) => {
+          {game.hand.map((card, index) => {
             const canSelect = selectable.has(card.id);
             const selected = selectedCardId === card.id;
             return (
@@ -478,8 +556,10 @@ export function CardTable({
                 selected={selected}
                 selectable={canSelect && yourTurn}
                 disabled={disabled || !yourTurn || !canSelect}
+                style={handCardStyle(index, game.hand.length)}
                 onClick={() => {
                   setConfirmDisband(null);
+                  if (!selected) playSelectionFeedback(preferencesRef.current);
                   setSelectedCardId(selected ? null : card.id);
                 }}
               />
@@ -488,9 +568,12 @@ export function CardTable({
         </div>
 
         <div className="hand-controls">
-          <div className="player-counts">
-            <span>Deck {game.players[viewer].remainingDeckCount}</span>
-            <span>Discard {game.players[viewer].discardPile.length}</span>
+          <div className="hand-status">
+            <DiscardPile cards={game.players[viewer].discardPile} label="Your" />
+            <div className="player-counts">
+              <span>Deck {game.players[viewer].remainingDeckCount}</span>
+              <span>Discard {game.players[viewer].discardPile.length}</span>
+            </div>
           </div>
           {interaction?.canDiscard === true && (
             <button
@@ -506,6 +589,43 @@ export function CardTable({
       </section>
 
       <footer className="match-controls">
+        <div className="table-feel-controls" aria-label="Table feel settings">
+          <button
+            type="button"
+            className="table-feel-toggle"
+            aria-pressed={preferences.sound}
+            onClick={() => {
+              const sound = !preferences.sound;
+              if (sound) unlockPresentationAudio();
+              updatePreferences({ ...preferences, sound });
+            }}
+          >
+            Sound {preferences.sound ? 'on' : 'off'}
+          </button>
+          <button
+            type="button"
+            className="table-feel-toggle"
+            aria-pressed={preferences.haptics}
+            disabled={!hapticsAvailable}
+            onClick={() => updatePreferences({ ...preferences, haptics: !preferences.haptics })}
+          >
+            Haptics {hapticsAvailable ? (preferences.haptics ? 'on' : 'off') : 'unavailable'}
+          </button>
+          <button
+            type="button"
+            className="table-feel-toggle"
+            aria-pressed={preferences.motion === 'REDUCED'}
+            onClick={() =>
+              updatePreferences({
+                ...preferences,
+                motion: preferences.motion === 'REDUCED' ? 'SYSTEM' : 'REDUCED',
+              })
+            }
+          >
+            Motion {preferences.motion === 'REDUCED' ? 'reduced' : 'system'}
+          </button>
+        </div>
+
         {snapshot.status === 'ACTIVE' && (
           <div className="surrender-control">
             {confirmSurrender ? (
