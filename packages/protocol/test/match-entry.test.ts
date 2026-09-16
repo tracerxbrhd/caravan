@@ -8,6 +8,7 @@ import {
 } from '../src/index.js';
 
 const MATCH_ID = '00000000-0000-4000-8000-000000000001';
+const OTHER_MATCH_ID = '00000000-0000-4000-8000-000000000003';
 const CHALLENGE_ID = '00000000-0000-4000-8000-000000000002';
 const TOKEN = 'A'.repeat(43);
 
@@ -30,7 +31,7 @@ describe('match entry protocol contracts', () => {
     expect(() => inviteTokenSchema.parse(`${'A'.repeat(42)}!`)).toThrow();
   });
 
-  it('keeps challenge responses strict and accepted results tied to a match id', () => {
+  it('keeps challenge responses strict and accepted results tied to one match id', () => {
     const challenge = challengeViewSchema.parse({
       id: CHALLENGE_ID,
       status: 'PENDING',
@@ -50,6 +51,19 @@ describe('match entry protocol contracts', () => {
       }),
     ).toMatchObject({ matchId: MATCH_ID, challenge: { status: 'ACCEPTED', matchId: MATCH_ID } });
 
+    expect(() =>
+      acceptedChallengeSchema.parse({
+        challenge: { ...challenge, status: 'ACCEPTED', matchId: MATCH_ID },
+        matchId: OTHER_MATCH_ID,
+      }),
+    ).toThrow();
+    expect(() =>
+      challengeViewSchema.parse({ ...challenge, status: 'ACCEPTED', matchId: null }),
+    ).toThrow();
+    expect(() => challengeViewSchema.parse({ ...challenge, matchId: MATCH_ID })).toThrow();
+    expect(() =>
+      challengeViewSchema.parse({ ...challenge, createdAtMs: 2_000, expiresAtMs: 2_000 }),
+    ).toThrow();
     expect(() =>
       challengeViewSchema.parse({ ...challenge, unexpectedPrivilegedState: { hand: ['secret'] } }),
     ).toThrow();
