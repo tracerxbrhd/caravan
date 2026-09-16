@@ -2,6 +2,12 @@ import { buildChallengeLaunchParam, type InviteToken } from '@caravan/protocol';
 
 export type HapticCue = 'SELECTION' | 'LIGHT' | 'MEDIUM' | 'SUCCESS' | 'ERROR';
 
+type TelegramHapticFeedback = {
+  impactOccurred(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void;
+  notificationOccurred(type: 'error' | 'success' | 'warning'): void;
+  selectionChanged(): void;
+};
+
 declare global {
   interface Window {
     Telegram?: {
@@ -11,11 +17,7 @@ declare global {
         ready(): void;
         expand(): void;
         openTelegramLink?(url: string): void;
-        HapticFeedback?: {
-          impactOccurred(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void;
-          notificationOccurred(type: 'error' | 'success' | 'warning'): void;
-          selectionChanged(): void;
-        };
+        HapticFeedback?: TelegramHapticFeedback;
       };
     };
   }
@@ -41,10 +43,16 @@ function configuredBotUsername(): string | null {
 }
 
 function telegramLaunchParam(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
   const direct = window.Telegram?.WebApp.initDataUnsafe?.start_param;
   if (direct !== undefined && direct.length > 0) return direct;
   const query = new URLSearchParams(window.location.search).get('tgWebAppStartParam');
   return query ?? undefined;
+}
+
+function telegramHaptics(): TelegramHapticFeedback | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return window.Telegram?.WebApp.HapticFeedback;
 }
 
 function browserVibrationAvailable(): boolean {
@@ -65,10 +73,14 @@ function browserVibration(cue: HapticCue): void {
 }
 
 export const platform: PlatformAdapter = {
-  initData: () => window.Telegram?.WebApp.initData ?? '',
+  initData: () => (typeof window === 'undefined' ? '' : (window.Telegram?.WebApp.initData ?? '')),
   launchParam: telegramLaunchParam,
-  ready: () => window.Telegram?.WebApp.ready(),
-  expand: () => window.Telegram?.WebApp.expand(),
+  ready: () => {
+    if (typeof window !== 'undefined') window.Telegram?.WebApp.ready();
+  },
+  expand: () => {
+    if (typeof window !== 'undefined') window.Telegram?.WebApp.expand();
+  },
   challengeInviteUrl: (inviteToken) => {
     const username = configuredBotUsername();
     if (username === null) return null;
@@ -76,12 +88,14 @@ export const platform: PlatformAdapter = {
     return `https://t.me/${username}?startapp=${encodeURIComponent(launchParam)}`;
   },
   shareUrl: (url, text) => {
+    if (typeof window === 'undefined') return;
     const share = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
     const openTelegramLink = window.Telegram?.WebApp.openTelegramLink;
     if (openTelegramLink !== undefined) openTelegramLink(share);
     else window.open(share, '_blank', 'noopener,noreferrer');
   },
   copyText: async (text) => {
+    if (typeof navigator === 'undefined') return false;
     try {
       await navigator.clipboard.writeText(text);
       return true;
@@ -89,10 +103,9 @@ export const platform: PlatformAdapter = {
       return false;
     }
   },
-  hapticsAvailable: () =>
-    window.Telegram?.WebApp.HapticFeedback !== undefined || browserVibrationAvailable(),
+  hapticsAvailable: () => telegramHaptics() !== undefined || browserVibrationAvailable(),
   haptic: (cue) => {
-    const haptics = window.Telegram?.WebApp.HapticFeedback;
+    const haptics = telegramHaptics();
     if (haptics === undefined) {
       browserVibration(cue);
       return;
