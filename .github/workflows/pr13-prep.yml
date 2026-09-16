@@ -1,0 +1,125 @@
+name: PR13 Prep
+
+on:
+  push:
+    branches:
+      - feat/pr13-rules-visual-guide
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/pr13-rules-visual-guide
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install --global --allow-scripts=pnpm pnpm@12.4.1
+      - name: Sync rules-guide decision and docs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected text not found in {path}: {old[:90]}')
+              p.write_text(text.replace(old, new))
+
+          guide = Path('apps/miniapp/src/RulesGuide.tsx')
+          text = guide.read_text()
+          text = text.replace("import { useEffect, useRef } from 'react';", "import { useEffect, useRef, type ReactNode } from 'react';")
+          text = text.replace('React.ReactNode', 'ReactNode')
+          guide.write_text(text)
+
+          replace('README.md', '> **Status:** pre-development. Product, rules, UX, and architecture foundations are documented; gameplay implementation has not started yet.', '> **Status:** active first-playable development. Core rules, authoritative multiplayer, Telegram entry, matchmaking/challenges, realtime recovery, and the interactive card table are implemented; production deployment and final game-feel/result layers are still in progress.')
+          replace('README.md', '- **Actually learnable.** A short interactive tutorial should teach the game through play instead of dropping a wall of rules on the player.', '- **Actually learnable.** A concise visual rules guide explains the game with card examples and stays available before and during matches.')
+
+          replace('docs/product/01-product-foundation.md', '- a strong interactive tutorial;', '- a concise visual rules guide with concrete card examples;')
+          replace('docs/product/01-product-foundation.md', '3. create the concise interactive tutorial defined by the accepted UX contract;', '3. keep the concise visual rules guide accurate, readable, and available before/during matches;')
+          replace('docs/product/04-market-and-competitive-context.md', '2. an interactive tutorial that makes the game understandable;', '2. a concise visual rules guide that makes the game understandable without blocking entry to play;')
+          replace('docs/product/05-game-rules.md', 'so the engine, protocol, tutorial, and tests have one source of truth.', 'so the engine, protocol, player-facing rules guide, and tests have one source of truth.')
+
+          p = Path('docs/product/06-first-playable-scope.md')
+          text = p.read_text().replace('-> complete or skip the interactive tutorial\n', '-> optionally review the visual rules guide\n')
+          start = text.index('### Tutorial\n')
+          end = text.index('### Match entry\n')
+          text = text[:start] + '''### Rules guide\n\nA concise text-and-visual rules guide is required because onboarding is part of the core product hypothesis, but reading it is not a mandatory gate before matchmaking.\n\nIt must explain with original wording and clear card examples at minimum:\n\n- the three opposing route pairs;\n- the 21-26 target range;\n- opening route seeding;\n- ascending/descending placement;\n- same-suit direction changes;\n- Jack, Queen, King, and Joker behavior;\n- play, discard, and route-disband turn choices;\n- lane ownership, ties, deck exhaustion, and overall victory.\n\nThe guide must remain reachable from Play and from an active match. Opening it during a match must not disconnect or replace the authoritative realtime session.\n\nIt uses illustrative DOM/CSS card scenes rather than tutorial-only gameplay state. `05-game-rules.md` and the deterministic engine remain authoritative; guide copy must be updated when a player-facing canonical rule changes.\n\n''' + text[end:]
+          p.write_text(text)
+
+          p = Path('docs/product/07-match-ux-and-tutorial.md')
+          text = p.read_text()
+          text = text.replace('# 07. Match UX and Tutorial Contract', '# 07. Match UX and Rules Guide Contract')
+          text = text.replace('Accepted as the interaction contract for the CARAVAN match experience. The competitive tap-select/tap-target table foundation is implemented; richer confirmed-transition choreography, sound/haptics, and the interactive tutorial remain follow-up work.', 'Accepted as the interaction contract for the CARAVAN match experience. The competitive tap-select/tap-target table and visual rules guide are implemented; richer confirmed-transition choreography and sound/haptics remain follow-up work.')
+          start = text.index('## Tutorial philosophy\n')
+          end = text.index('## Accessibility and legibility\n')
+          text = text[:start] + '''## Rules guide\n\nCARAVAN uses an optional text-and-visual rules guide instead of a separate scripted tutorial. It should make the game understandable without creating a second gameplay path that can drift away from competitive matches.\n\nThe guide should:\n\n- use short sections rather than one wall of prose;\n- pair difficult rules with original card illustrations/examples;\n- cover objective, opening, value-card ordering, suit override, face cards, normal-turn choices, lane ownership, victory, and deck exhaustion;\n- remain available from Play and the live table;\n- never pause, replace, or mutate the authoritative match when opened during play;\n- use the canonical rules in `05-game-rules.md` as its source of truth.\n\nReading the guide is optional before matchmaking. Familiar players should be able to enter a match immediately.\n\n''' + text[end:]
+          p.write_text(text)
+
+          replace('docs/README.md', '- [`product/07-match-ux-and-tutorial.md`](product/07-match-ux-and-tutorial.md) — match interaction, card-motion language, and interactive tutorial contract.', '- [`product/07-match-ux-and-tutorial.md`](product/07-match-ux-and-tutorial.md) — match interaction, card-motion language, and visual rules-guide contract.')
+          p = Path('docs/README.md')
+          text = p.read_text()
+          marker = '- [`architecture/13-interactive-card-table.md`](architecture/13-interactive-card-table.md)'
+          idx = text.index(marker)
+          line_end = text.index('\n', idx) + 1
+          text = text[:line_end] + '- [`architecture/14-rules-guide.md`](architecture/14-rules-guide.md) — optional text/visual onboarding guide and live-match help boundary.\n' + text[line_end:]
+          p.write_text(text)
+
+          p = Path('docs/architecture/01-technical-foundation.md')
+          text = p.read_text()
+          replace_old = 'The Mini App has a Telegram platform adapter, authentication bootstrap, durable match-entry Play flow, challenge launch/share handling, and validated WebSocket RESYNC/reconnect transport. The interactive tutorial, full card-table interaction/presentation, and production backend composition remain intentionally unimplemented rather than represented by fake placeholders.'
+          replace_new = 'The Mini App has a Telegram platform adapter, authentication bootstrap, durable match-entry Play flow, challenge launch/share handling, validated WebSocket RESYNC/reconnect transport, a legal-action-driven interactive card table, and an optional visual rules guide. Richer tactile transition/audio/haptic polish and production application composition remain intentionally unimplemented rather than represented by fake placeholders.'
+          if replace_old not in text:
+              raise SystemExit('architecture 01 status marker missing')
+          text = text.replace(replace_old, replace_new)
+          text = text.replace('and [`12-miniapp-play-flow.md`](12-miniapp-play-flow.md) for Mini App match-entry/realtime orchestration.', 'and [`12-miniapp-play-flow.md`](12-miniapp-play-flow.md) for Mini App match-entry/realtime orchestration. See [`13-interactive-card-table.md`](13-interactive-card-table.md) for the match surface and [`14-rules-guide.md`](14-rules-guide.md) for the optional onboarding/help boundary.')
+          p.write_text(text)
+
+          p = Path('docs/architecture/12-miniapp-play-flow.md')
+          text = p.read_text()
+          text = text.replace('It deliberately stops before the full interactive card-table presentation and tutorial.', 'It deliberately stops before the full interactive card-table presentation and later visual rules-guide layer.')
+          text = text.replace('- the interactive tutorial;', '- the visual rules guide (implemented later; see `14-rules-guide.md`);')
+          p.write_text(text)
+
+          p = Path('docs/architecture/13-interactive-card-table.md')
+          text = p.read_text().replace('- the interactive tutorial;\n', '')
+          text = text.replace('Those remain focused first-playable or presentation layers rather than hidden inside the table implementation.', 'The optional visual rules guide is implemented separately in [`14-rules-guide.md`](14-rules-guide.md), so opening help does not add rules or tutorial state to the competitive table. The remaining items stay focused first-playable or presentation layers rather than hidden inside the table implementation.')
+          p.write_text(text)
+
+          p = Path('docs/development/README.md')
+          text = p.read_text()
+          text = text.replace('Mini App Play/match-entry/realtime orchestration and the legal-action-driven interactive card table are implemented; the interactive tutorial, richer tactile transition/audio/haptic polish, and production application deployment remain intentionally unimplemented unless later documentation says otherwise.', 'Mini App Play/match-entry/realtime orchestration, the legal-action-driven interactive card table, and the optional visual rules guide are implemented; richer tactile transition/audio/haptic polish and production application deployment remain intentionally unimplemented unless later documentation says otherwise.')
+          text = text.replace('19. [`../architecture/13-interactive-card-table.md`](../architecture/13-interactive-card-table.md)', '19. [`../architecture/13-interactive-card-table.md`](../architecture/13-interactive-card-table.md)\n20. [`../architecture/14-rules-guide.md`](../architecture/14-rules-guide.md)')
+          text = text.replace('The interactive tutorial and richer confirmed-transition/audio/haptic polish remain later focused layers.', 'The optional visual rules guide is also implemented and remains available before and during matches. Richer confirmed-transition/audio/haptic polish remains a later focused layer.')
+          text = text.replace('and the card-table legal-action affordance model have substantive automated tests.', 'the card-table legal-action affordance model, and rules-guide presentation have substantive automated tests.')
+          p.write_text(text)
+          PY
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+      - name: Format
+        run: pnpm format
+      - name: Verify non-database workspace
+        run: |
+          pnpm build
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+      - name: Remove temporary workflow
+        run: rm .github/workflows/pr13-prep.yml
+      - name: Commit prepared branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'chore: finalize PR13 rules guide and docs'
+          git push origin HEAD:feat/pr13-rules-visual-guide
