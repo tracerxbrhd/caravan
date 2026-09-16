@@ -1,5 +1,5 @@
 import type pg from 'pg';
-import type { MatchId, StateVersion } from '@caravan/protocol';
+import { matchIdSchema, type MatchId, type StateVersion } from '@caravan/protocol';
 import {
   MATCH_PERSISTENCE_SCHEMA_VERSION,
   parsePersistedMatch,
@@ -14,6 +14,10 @@ interface MatchRow extends pg.QueryResultRow {
   readonly status: AuthoritativeMatch['status'];
   readonly snapshot_schema_version: number;
   readonly snapshot: unknown;
+}
+
+interface MatchIdRow extends pg.QueryResultRow {
+  readonly id: string;
 }
 
 function databaseStateVersion(value: string): StateVersion {
@@ -74,6 +78,16 @@ export class PostgresMatchStore implements MatchStore {
       status: row.status,
       persistenceSchemaVersion: row.snapshot_schema_version,
     });
+  }
+
+  public async listActiveMatchIds(): Promise<readonly MatchId[]> {
+    const result = await this.#pool.query<MatchIdRow>(
+      `SELECT id::text
+         FROM caravan_matches
+        WHERE status = 'ACTIVE'
+        ORDER BY updated_at ASC, id ASC`,
+    );
+    return result.rows.map((row) => matchIdSchema.parse(row.id));
   }
 
   public async compareAndSet(
