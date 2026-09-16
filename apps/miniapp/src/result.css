@@ -1,0 +1,126 @@
+.match-result {
+  display: grid;
+  gap: 16px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-color: rgba(199, 158, 96, 0.38);
+  background:
+    linear-gradient(135deg, rgba(115, 82, 43, 0.12), transparent 44%), rgba(30, 23, 16, 0.92);
+}
+
+.match-result__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.match-result__heading h2 {
+  margin: 3px 0 6px;
+  font-size: clamp(1.6rem, 7vw, 2.6rem);
+}
+
+.match-result__heading p {
+  margin: 0;
+}
+
+.match-result__stamp {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 1px solid rgba(202, 161, 95, 0.48);
+  border-radius: 7px;
+  color: #d7b57e;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transform: rotate(3deg);
+}
+
+.result-lanes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.result-lane {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(179, 143, 91, 0.24);
+  border-radius: 12px;
+  background: rgba(9, 7, 5, 0.24);
+}
+
+.result-lane__name {
+  color: #9f8f77;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.result-lane strong {
+  color: #efe2cb;
+  font-size: 1rem;
+}
+
+.result-lane__score {
+  color: #c7b79e;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-lane__score small {
+  color: #887a67;
+  font-size: 0.62rem;
+}
+
+.rematch-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid rgba(179, 143, 91, 0.24);
+  border-radius: 14px;
+  background: rgba(54, 40, 25, 0.5);
+}
+
+.rematch-card p {
+  margin: 3px 0 0;
+  color: #c9b99f;
+  font-size: 0.82rem;
+}
+
+.rematch-card .button {
+  flex: 0 0 auto;
+}
+
+.match-result__exit {
+  justify-self: start;
+}
+
+@media (max-width: 600px) {
+  .result-lanes {
+    grid-template-columns: 1fr;
+  }
+
+  .result-lane {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+  }
+
+  .result-lane strong {
+    text-align: center;
+  }
+
+  .rematch-card {
+    display: grid;
+  }
+
+  .rematch-card .button,
+  .match-result__exit {
+    width: 100%;
+  }
+}

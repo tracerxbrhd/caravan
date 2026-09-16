@@ -36,14 +36,16 @@ function publicErrorCode(error: unknown): string {
 function statusForError(code: string): number {
   if (code === 'UNAUTHENTICATED') return 401;
   if (code === 'ACCOUNT_DISABLED') return 403;
-  if (code === 'CHALLENGE_NOT_FOUND') return 404;
+  if (code === 'CHALLENGE_NOT_FOUND' || code === 'MATCH_NOT_FOUND') return 404;
   if (code === 'CHALLENGE_EXPIRED') return 410;
   if (
     code === 'MATCH_ALREADY_ACTIVE' ||
     code === 'MATCHMAKING_NOT_QUEUED' ||
     code === 'CHALLENGE_UNAVAILABLE' ||
     code === 'CANNOT_ACCEPT_OWN_CHALLENGE' ||
-    code === 'CANNOT_DECLINE_OWN_CHALLENGE'
+    code === 'CANNOT_DECLINE_OWN_CHALLENGE' ||
+    code === 'REMATCH_NOT_ALLOWED' ||
+    code === 'REMATCH_UNAVAILABLE'
   ) {
     return 409;
   }

@@ -4,13 +4,16 @@ import {
   challengeViewSchema,
   createChallengeResponseSchema,
   matchmakingStatusSchema,
+  rematchStatusSchema,
   type AcceptedChallenge,
   type ChallengeId,
   type ChallengeResolution,
   type ChallengeView,
   type CreateChallengeResponse,
   type InviteToken,
+  type MatchId,
   type MatchmakingStatus,
+  type RematchStatus,
 } from '@caravan/protocol';
 
 export interface AccountProfile {
@@ -153,6 +156,22 @@ export function cancelChallenge(challengeId: ChallengeId): Promise<ChallengeReso
       method: 'POST',
     },
   );
+}
+
+export function rematchStatus(matchId: MatchId): Promise<RematchStatus> {
+  return requestParsed(`/api/matches/${encodeURIComponent(matchId)}/rematch`, rematchStatusSchema);
+}
+
+export function requestRematch(matchId: MatchId): Promise<RematchStatus> {
+  return requestParsed(`/api/matches/${encodeURIComponent(matchId)}/rematch`, rematchStatusSchema, {
+    method: 'POST',
+  });
+}
+
+export function cancelRematch(matchId: MatchId): Promise<RematchStatus> {
+  return requestParsed(`/api/matches/${encodeURIComponent(matchId)}/rematch`, rematchStatusSchema, {
+    method: 'DELETE',
+  });
 }
 
 let bootstrapPromise: Promise<AccountProfile> | undefined;

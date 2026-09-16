@@ -30,6 +30,7 @@ The root `README.md` is intentionally product-facing. Internal technical detail 
 - [`architecture/12-miniapp-play-flow.md`](architecture/12-miniapp-play-flow.md) — Mini App launch context, match-entry orchestration, private sharing, and authoritative realtime/resync client.
 - [`architecture/13-interactive-card-table.md`](architecture/13-interactive-card-table.md) — authoritative legal-action-driven card selection, exact targets, pending-command behavior, and responsive table presentation.
 - [`architecture/14-rules-guide.md`](architecture/14-rules-guide.md) — optional text/visual onboarding guide and live-match help boundary.
+- [`architecture/15-results-and-rematch.md`](architecture/15-results-and-rematch.md) — authoritative result presentation and durable two-party rematch handshake.
 
 ## Development
 

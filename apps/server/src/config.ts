@@ -14,6 +14,7 @@ const configSchema = z
     RECONNECT_GRACE_SECONDS: z.coerce.number().int().min(5).max(300).default(30),
     MATCHMAKING_LEASE_SECONDS: z.coerce.number().int().min(30).max(600).default(90),
     CHALLENGE_TTL_SECONDS: z.coerce.number().int().min(60).max(86400).default(900),
+    REMATCH_TTL_SECONDS: z.coerce.number().int().min(60).max(86400).default(900),
   })
   .passthrough()
   .superRefine((value, ctx) => {

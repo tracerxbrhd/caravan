@@ -1,12 +1,20 @@
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
-import { challengeIdSchema, inviteTokenRequestSchema, type ChallengeId } from '@caravan/protocol';
+import {
+  challengeIdSchema,
+  inviteTokenRequestSchema,
+  matchIdSchema,
+  type ChallengeId,
+  type MatchId,
+} from '@caravan/protocol';
 import { z } from 'zod';
 import { SESSION_COOKIE_NAME, sessionAccount } from './accounts.js';
 import type { Config } from './config.js';
 import { MatchEntryService } from './match-entry.js';
+import { RematchService } from './rematch.js';
 
 const challengeParamsSchema = z.object({ challengeId: challengeIdSchema }).strict();
+const matchParamsSchema = z.object({ matchId: matchIdSchema }).strict();
 
 async function authenticatedAccount(
   app: FastifyInstance,
@@ -29,6 +37,9 @@ export async function installMatchEntryRoutes(
   const service = new MatchEntryService(pool, {
     matchmakingLeaseMs: config.MATCHMAKING_LEASE_SECONDS * 1_000,
     challengeTtlMs: config.CHALLENGE_TTL_SECONDS * 1_000,
+  });
+  const rematches = new RematchService(pool, {
+    ttlMs: config.REMATCH_TTL_SECONDS * 1_000,
   });
 
   app.get('/api/matchmaking', async (request) => {
@@ -94,5 +105,27 @@ export async function installMatchEntryRoutes(
       challengeId: ChallengeId;
     };
     return service.cancelChallenge(accountId, challengeId);
+  });
+
+  app.get('/api/matches/:matchId/rematch', async (request) => {
+    const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
+    const { matchId } = matchParamsSchema.parse(request.params) as { matchId: MatchId };
+    return rematches.status(accountId, matchId);
+  });
+
+  app.post(
+    '/api/matches/:matchId/rematch',
+    { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
+    async (request) => {
+      const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
+      const { matchId } = matchParamsSchema.parse(request.params) as { matchId: MatchId };
+      return rematches.request(accountId, matchId);
+    },
+  );
+
+  app.delete('/api/matches/:matchId/rematch', async (request) => {
+    const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
+    const { matchId } = matchParamsSchema.parse(request.params) as { matchId: MatchId };
+    return rematches.cancel(accountId, matchId);
   });
 }

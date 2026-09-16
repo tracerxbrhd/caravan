@@ -112,6 +112,23 @@ export const acceptedChallengeSchema = z
     }
   });
 
+export const rematchStatusSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('IDLE') }).strict(),
+  z
+    .object({
+      status: z.literal('WAITING'),
+      requestedBy: z.enum(['YOU', 'OPPONENT']),
+      expiresAtMs: serverTimeMsSchema,
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal('MATCH_FOUND'),
+      matchId: matchIdSchema,
+    })
+    .strict(),
+]);
+
 export type ChallengeId = z.infer<typeof challengeIdSchema>;
 export type InviteToken = z.infer<typeof inviteTokenSchema>;
 export type MatchmakingStatus = z.infer<typeof matchmakingStatusSchema>;
@@ -120,3 +137,4 @@ export type ChallengeView = z.infer<typeof challengeViewSchema>;
 export type CreateChallengeResponse = z.infer<typeof createChallengeResponseSchema>;
 export type ChallengeResolution = z.infer<typeof challengeResolutionSchema>;
 export type AcceptedChallenge = z.infer<typeof acceptedChallengeSchema>;
+export type RematchStatus = z.infer<typeof rematchStatusSchema>;
