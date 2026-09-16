@@ -1,16 +1,7 @@
 import { flushSync } from 'react-dom';
 import { shouldReduceMotion } from './presentation.js';
 
-interface BrowserViewTransition {
-  readonly finished: Promise<void>;
-  skipTransition(): void;
-}
-
-interface ViewTransitionDocument extends Document {
-  startViewTransition?(update: () => void): BrowserViewTransition;
-}
-
-let activeTransition: BrowserViewTransition | null = null;
+let activeTransition: ViewTransition | null = null;
 
 export function commitPresentationUpdate(update: () => void): void {
   if (typeof document === 'undefined' || shouldReduceMotion()) {
@@ -18,9 +9,7 @@ export function commitPresentationUpdate(update: () => void): void {
     return;
   }
 
-  const transitionDocument = document as ViewTransitionDocument;
-  const startViewTransition = transitionDocument.startViewTransition;
-  if (startViewTransition === undefined) {
+  if (typeof document.startViewTransition !== 'function') {
     flushSync(update);
     return;
   }
@@ -28,7 +17,7 @@ export function commitPresentationUpdate(update: () => void): void {
   activeTransition?.skipTransition();
 
   try {
-    const transition = startViewTransition.call(transitionDocument, () => flushSync(update));
+    const transition = document.startViewTransition(() => flushSync(update));
     activeTransition = transition;
     void transition.finished
       .catch(() => undefined)
