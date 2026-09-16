@@ -2,9 +2,9 @@
 
 ## Status
 
-Implemented initially in `apps/server` by PR #5.
+Implemented initially in `apps/server` by PR #5 and extended with durable realtime lifecycle/deadline orchestration in PR #8.
 
-This document defines the server-owned match orchestration layer that sits between the pure game engine and future transport/persistence adapters.
+This document defines the server-owned match orchestration layer that sits between the pure game engine, persistence adapter, and transport runtime.
 
 ## Scope
 
@@ -20,9 +20,12 @@ The match service owns:
 - stale-command rejection;
 - game-engine action application;
 - surrender and server-owned lifecycle finalization;
+- durable connection flags and authoritative turn/reconnect deadlines;
+- connect/disconnect/restart lifecycle transitions;
+- periodic deadline-expiration decisions;
 - fresh per-player sanitized snapshots.
 
-It does not own HTTP/WebSocket transport, Telegram authentication, matchmaking, PostgreSQL SQL/migrations, reconnect timing policy, or production deployment.
+It does not own HTTP/WebSocket framing, Telegram authentication, process-local controlling-socket maps, matchmaking, PostgreSQL SQL/migrations, or production deployment.
 
 ## Match creation
 
@@ -40,7 +43,7 @@ Tests inject deterministic randomness; the game engine itself remains randomness
 
 ## Authoritative state
 
-The service stores an internal `AuthoritativeMatch` containing privileged engine state, participants, lifecycle state, processed command records and the current `stateVersion`.
+The service stores an internal `AuthoritativeMatch` containing privileged engine state, participants, lifecycle state, processed command records, connection flags, absolute deadlines, and the current `stateVersion`.
 
 That type is server-only and has no protocol schema.
 
@@ -57,15 +60,16 @@ The service validates outbound snapshots for both seats before committing accept
 
 ## Storage boundary
 
-PR #5 introduces a narrow `MatchStore` port:
+`MatchStore` remains deliberately narrow:
 
 - `create(match)`;
 - `load(matchId)`;
-- `compareAndSet(matchId, expectedStateVersion, next)`.
+- `compareAndSet(matchId, expectedStateVersion, next)`;
+- `listActiveMatchIds()` for lifecycle sweep/recovery work.
 
-The first implementation is in-memory and intentionally non-durable. Its purpose is to prove match semantics and concurrency behavior without coupling those semantics to PostgreSQL.
+`InMemoryMatchStore` remains the focused-test implementation. `PostgresMatchStore` is the durable live adapter and preserves the same atomic compare-and-set semantics transactionally.
 
-The next durable storage implementation must preserve the same atomic compare-and-set semantics transactionally. PostgreSQL should replace this adapter rather than redesign the match service.
+The service never relies on process memory as the only copy of active-match state.
 
 ## Command processing order
 
@@ -76,15 +80,17 @@ For a state-changing command, the service performs:
 3. check whether this account already used the `commandId`;
 4. if the exact command was already accepted, do not apply it again and return a fresh current snapshot;
 5. if the same `commandId` is reused with a different payload, reject `DUPLICATE_COMMAND`;
-6. validate `expectedStateVersion`;
-7. reject commands against a finished match;
-8. apply surrender or deterministic `game-engine` transition;
-9. derive any rule-engine match result;
-10. increment `stateVersion` exactly once;
-11. append the processed-command record;
-12. validate fresh player projections;
-13. commit with compare-and-set;
-14. return the viewer-specific accepted snapshot.
+6. resolve any already-expired authoritative deadline before accepting a new mutation;
+7. validate `expectedStateVersion`;
+8. reject commands against a finished match;
+9. apply surrender or deterministic `game-engine` transition;
+10. derive any rule-engine match result;
+11. increment `stateVersion` exactly once;
+12. append the processed-command record;
+13. advance/clear lifecycle deadlines as appropriate;
+14. validate fresh player projections;
+15. commit with compare-and-set;
+16. return the viewer-specific accepted snapshot.
 
 Duplicate detection intentionally occurs before stale-version rejection. A legitimate network retry commonly arrives after the first attempt already advanced the version; treating that retry as stale before checking `commandId` would break idempotency.
 
@@ -94,7 +100,7 @@ Two commands may race with the same expected version.
 
 They may both calculate candidate transitions, but only one compare-and-set commit can succeed. The loser reloads current state and is then resolved under normal duplicate/stale rules.
 
-This property is tested against the in-memory store and must remain true when PostgreSQL persistence arrives.
+The same CAS discipline also protects concurrent connect/disconnect, deadline finalization, and restart-recovery transitions.
 
 ## Rule errors and protocol rejections
 
@@ -105,6 +111,8 @@ The service maps them to stable protocol outcomes:
 - `NOT_ACTIVE_PLAYER` -> `NOT_ACTIVE_PLAYER`;
 - already-finished engine state -> `MATCH_FINISHED`;
 - other card-rule violations -> `ILLEGAL_ACTION` plus the stable engine `gameErrorCode`.
+
+Transport-owned conditions such as controlling-socket ownership or waiting for both realtime participants remain in the WebSocket adapter rather than being promoted into game rules.
 
 Internal exception strings are never exposed as protocol contracts.
 
@@ -121,32 +129,53 @@ Server lifecycle outcomes remain outside `GameAction`:
 - server-owned `TIMEOUT` finalization;
 - infrastructure `NO_CONTEST` finalization.
 
-Lifecycle finalization advances `stateVersion` but does not invent or mutate a card-rule result. The protocol therefore continues to distinguish `PlayerView.result` from the broader match result.
+Lifecycle finalization advances `stateVersion`, clears active deadlines, and does not invent or mutate a card-rule result. The protocol therefore continues to distinguish `PlayerView.result` from the broader match result.
 
-PR #5 provides timeout/no-contest finalization primitives but does not yet implement clocks, reconnect grace, or periodic expiration. Those arrive with realtime/lifecycle infrastructure.
+## Realtime lifecycle and deadlines
+
+The service exposes lifecycle methods consumed by the realtime adapter rather than embedding socket objects itself.
+
+`connectPlayer(...)` and `disconnectPlayer(...)` update durable connection flags and reconnect deadlines through `MatchStore.compareAndSet(...)`.
+
+The first turn deadline is created when both seats have connected. Accepted non-finishing state-changing commands advance the turn deadline from authoritative server time. A disconnect after match start creates a reconnect grace deadline without allowing the client to provide or extend time.
+
+`expireMatchIfDue(...)` and `expireAllDue()` evaluate stored absolute deadlines. If one earliest deadline identifies one loser, the match finalizes as `TIMEOUT`. If simultaneous earliest deadlines imply different losers, the service finalizes `NO_CONTEST` instead of choosing arbitrarily.
+
+The timeout and reconnect durations are injected server configuration, not game-engine rules.
+
+## Restart recovery
+
+`recoverConnectionsAfterRestart()` handles the fact that persisted `connected=true` flags cannot represent live sockets across a process restart.
+
+For active matches it:
+
+- converts stale connected flags to disconnected state;
+- grants reconnect grace where a started match had a live pre-restart connection;
+- preserves absolute authoritative turn/reconnect timing;
+- resolves an already-expired recovered deadline as infrastructure `NO_CONTEST` rather than retroactively asserting a player-caused timeout while the server was unavailable.
+
+All restart-recovery mutations are durable/versioned and use the same CAS boundary.
 
 ## Resync
 
-`RESYNC` is non-mutating. It does not increment `stateVersion` and always returns a newly generated sanitized snapshot to an authenticated match participant.
+`RESYNC` remains non-mutating with respect to card-game state. It does not itself apply a game action and always returns a newly generated sanitized snapshot to an authenticated match participant.
+
+The realtime adapter performs connection ownership and durable connect/reconnect lifecycle work around this command before returning the final participant snapshot.
 
 The supplied known version is advisory context for transport/client behavior; it is never trusted as state.
 
 ## Current non-goals
 
-PR #5 deliberately does not implement:
+The match service deliberately does not implement:
 
-- PostgreSQL persistence or migrations;
-- restart recovery;
-- Fastify routes;
-- WebSocket connections/broadcasting;
+- HTTP routes or WebSocket framing;
 - Telegram `initData` authentication;
-- session/control ownership;
-- disconnect/reconnect timers;
+- process-local controlling-socket maps;
 - matchmaking/private challenges;
 - player profiles/rating/economy;
 - client UI.
 
-Those layers must consume this service rather than bypassing it or duplicating game rules.
+Those layers consume this service rather than bypassing it or duplicating game rules.
 
 ## Testing baseline
 
@@ -165,4 +194,7 @@ Server tests cover:
 - surrender idempotency;
 - timeout and no-contest finalization;
 - non-participant isolation;
-- a complete engine-to-server match driven only by projected legal actions.
+- a complete engine-to-server match driven only by projected legal actions;
+- durable connect/disconnect/reconnect transitions;
+- turn/reconnect deadline behavior;
+- restart recovery and infrastructure no-contest handling.
