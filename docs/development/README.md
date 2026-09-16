@@ -1,6 +1,6 @@
 # Development
 
-CARAVAN is currently in the product/architecture foundation stage. Application scaffolding and local-development commands have not been established yet.
+CARAVAN now has its initial pnpm/TypeScript workspace scaffold. Gameplay, backend, bot, protocol, authentication, persistence, and multiplayer behavior are still intentionally unimplemented unless later documentation says otherwise.
 
 ## Before implementation work
 
@@ -21,23 +21,78 @@ For gameplay, server, protocol, or match-client implementation, the required bas
 
 `product/04-market-and-competitive-context.md` is useful product context but is not an implementation contract.
 
-Do not invent setup commands or describe dependencies as installed until the repository actually contains them.
-
 Do not implement a gameplay behavior that contradicts `product/05-game-rules.md` merely because another public Caravan implementation behaves differently. Change the normative rule document deliberately when a rule decision changes.
 
-## Expected quality baseline
+## Toolchain
 
-Once implementation begins, the repository should establish and document commands for:
+The initial verified baseline intentionally follows the known-good UNDERGAMMON family rather than chasing every newest major release during bootstrap:
 
-- formatting and format checks;
-- linting;
-- strict TypeScript typechecking;
-- unit/regression/property tests for the game engine;
-- server integration tests for hidden information, stale/duplicate commands, reconnect/recovery, lifecycle deadlines, and finalization;
-- production builds;
-- key E2E player journeys where practical.
+- Node.js 24;
+- pnpm 12.4.1;
+- TypeScript 5.9;
+- ESLint 9 with `typescript-eslint`;
+- Prettier 3;
+- Vitest 4;
+- React 19 + Vite 8 for the Mini App shell.
 
-The exact tools and commands should be recorded here when they exist.
+Dependency upgrades should be deliberate and verified rather than mixed into unrelated gameplay work.
+
+## Workspace layout
+
+```text
+apps/
+  miniapp/       React/Vite client shell
+  bot/           Telegram bot application boundary
+  server/        authoritative backend application boundary
+
+packages/
+  game-engine/   deterministic game-rule package boundary
+  protocol/      client/server contract package boundary
+```
+
+`bot`, `server`, `game-engine`, and `protocol` intentionally contain no fake runtime/gameplay implementation at scaffold stage. Their package/build boundaries exist so later focused PRs can add real behavior without redesigning the workspace.
+
+## Setup
+
+Use Node.js 24 and pnpm 12.
+
+```bash
+pnpm install
+```
+
+The repository enforces supported Node/pnpm major versions through `package.json` and `.npmrc`.
+
+## Commands
+
+```bash
+pnpm dev:miniapp
+```
+
+Runs the current Vite Mini App shell.
+
+```bash
+pnpm build
+pnpm lint
+pnpm format:check
+pnpm typecheck
+pnpm test
+```
+
+Or run the full local verification gate:
+
+```bash
+pnpm verify
+```
+
+`pnpm format` writes formatting changes when needed.
+
+At scaffold stage Vitest is configured to allow zero tests; substantive tests become mandatory as real behavior is introduced. Do not add meaningless placeholder tests merely to increase a count.
+
+## CI
+
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main` using Node.js 24. The required verification sequence is install, build, lint, formatting check, strict typecheck, tests, and a production dependency audit.
+
+CI should grow only when the corresponding implementation exists. PostgreSQL services, Playwright, Docker validation, migrations, and deployment checks belong in later PRs that actually introduce those capabilities.
 
 ## Development principles
 

@@ -1,0 +1,31 @@
+{
+  "name": "caravan",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.4.1",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=12 <13"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present run build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "vitest run --passWithNoTests",
+    "test:ci": "vitest run --passWithNoTests",
+    "verify": "pnpm build && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:ci",
+    "dev:miniapp": "pnpm --filter @caravan/miniapp dev"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.4",
+    "eslint": "9.39.5",
+    "fast-check": "4.10.0",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "4.1.11"
+  }
+}
