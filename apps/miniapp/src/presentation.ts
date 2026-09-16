@@ -137,12 +137,20 @@ export function parsePresentationPreferences(raw: string | null): PresentationPr
 
 export function loadPresentationPreferences(): PresentationPreferences {
   if (typeof window === 'undefined') return DEFAULT_PRESENTATION_PREFERENCES;
-  return parsePresentationPreferences(window.localStorage.getItem(STORAGE_KEY));
+  try {
+    return parsePresentationPreferences(window.localStorage.getItem(STORAGE_KEY));
+  } catch {
+    return DEFAULT_PRESENTATION_PREFERENCES;
+  }
 }
 
 export function savePresentationPreferences(preferences: PresentationPreferences): void {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+  } catch {
+    // Presentation preferences are optional. Restricted WebViews may deny storage access.
+  }
 }
 
 export function shouldReduceMotion(): boolean {
