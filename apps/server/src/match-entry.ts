@@ -201,6 +201,7 @@ export class MatchEntryService {
         return matchmakingStatusSchema.parse({ status: 'MATCH_FOUND', matchId: existingMatchId });
       }
 
+      await cancelOutgoingChallenges(db, [accountId], now);
       await db.query('DELETE FROM caravan_matchmaking_queue WHERE lease_expires_at <= $1', [now]);
       const leaseExpiresAt = new Date(now.getTime() + this.#matchmakingLeaseMs);
       await db.query(
@@ -276,6 +277,7 @@ export class MatchEntryService {
 
   public async heartbeatMatchmaking(accountId: string): Promise<MatchmakingStatus> {
     return transaction(this.#pool, async (db) => {
+      await lockMatchmakingQueue(db);
       await lockAccount(db, accountId);
       const matchId = await activeMatchId(db, accountId);
       if (matchId !== null) {
@@ -303,6 +305,7 @@ export class MatchEntryService {
 
   public async leaveMatchmaking(accountId: string): Promise<MatchmakingStatus> {
     await transaction(this.#pool, async (db) => {
+      await lockMatchmakingQueue(db);
       await lockAccount(db, accountId);
       await db.query('DELETE FROM caravan_matchmaking_queue WHERE account_id = $1', [accountId]);
     });
@@ -314,6 +317,7 @@ export class MatchEntryService {
     const inviteToken = newInviteToken();
 
     return transaction(this.#pool, async (db) => {
+      await lockMatchmakingQueue(db);
       await lockAccount(db, accountId);
       if ((await activeMatchId(db, accountId)) !== null) throw new Error('MATCH_ALREADY_ACTIVE');
 
@@ -398,7 +402,7 @@ export class MatchEntryService {
     accountId: string,
     inviteToken: InviteToken,
   ): Promise<AcceptedChallenge> {
-    return transaction(this.#pool, async (db) => {
+    const accepted = await transaction(this.#pool, async (db): Promise<AcceptedChallenge | null> => {
       const initial = (
         await db.query<ChallengeRow>(
           `SELECT id::text,
@@ -418,6 +422,7 @@ export class MatchEntryService {
         throw new Error('CANNOT_ACCEPT_OWN_CHALLENGE');
       }
 
+      await lockMatchmakingQueue(db);
       await lockAccounts(db, [initial.inviter_account_id, accountId]);
       const row = await loadChallengeByIdForUpdate(db, challengeIdSchema.parse(initial.id));
       if (row === null) throw new Error('CHALLENGE_NOT_FOUND');
@@ -433,7 +438,15 @@ export class MatchEntryService {
       if (row.status !== 'PENDING') throw new Error('CHALLENGE_UNAVAILABLE');
 
       const now = new Date(this.#now());
-      if (row.expires_at.getTime() <= now.getTime()) throw new Error('CHALLENGE_EXPIRED');
+      if (row.expires_at.getTime() <= now.getTime()) {
+        await db.query(
+          `UPDATE caravan_private_challenges
+              SET status = 'EXPIRED', resolved_at = $2
+            WHERE id = $1`,
+          [row.id, now],
+        );
+        return null;
+      }
 
       if ((await activeMatchId(db, row.inviter_account_id)) !== null) {
         throw new Error('CHALLENGE_UNAVAILABLE');
@@ -445,7 +458,7 @@ export class MatchEntryService {
         participants: { A: row.inviter_account_id, B: accountId },
       });
 
-      const accepted = (
+      const resolved = (
         await db.query<ChallengeRow>(
           `UPDATE caravan_private_challenges
               SET status = 'ACCEPTED',
@@ -463,14 +476,17 @@ export class MatchEntryService {
           [row.id, accountId, matchId, now],
         )
       ).rows[0];
-      if (accepted === undefined) throw new Error('INTERNAL_ERROR');
+      if (resolved === undefined) throw new Error('INTERNAL_ERROR');
 
       await db.query('DELETE FROM caravan_matchmaking_queue WHERE account_id = ANY($1::uuid[])', [
         [row.inviter_account_id, accountId],
       ]);
       await cancelOutgoingChallenges(db, [row.inviter_account_id, accountId], now);
-      return { challenge: challengeView(accepted) as AcceptedChallenge['challenge'], matchId };
+      return { challenge: challengeView(resolved) as AcceptedChallenge['challenge'], matchId };
     });
+
+    if (accepted === null) throw new Error('CHALLENGE_EXPIRED');
+    return accepted;
   }
 
   public async declineChallenge(
