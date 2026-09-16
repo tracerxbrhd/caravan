@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { commandIdSchema, matchIdSchema, protocolVersionSchema, stateVersionSchema } from './common.js';
+import {
+  commandIdSchema,
+  matchIdSchema,
+  protocolVersionSchema,
+  stateVersionSchema,
+} from './common.js';
 import { gameActionSchema } from './game.js';
 
 const stateChangingEnvelope = {
