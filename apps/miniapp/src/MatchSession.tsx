@@ -1,5 +1,11 @@
-import type { CommandRejectionCode, MatchId, MatchSnapshot } from '@caravan/protocol';
+import type {
+  CommandRejectionCode,
+  MatchId,
+  MatchSnapshot,
+  WireGameAction,
+} from '@caravan/protocol';
 import { useEffect, useRef, useState } from 'react';
+import { CardTable } from './CardTable.js';
 import {
   connectMatch,
   type MatchConnectionState,
@@ -22,7 +28,9 @@ function connectionLabel(state: MatchConnectionState): string {
 function rejectionLabel(code: CommandRejectionCode): string {
   if (code === 'CONNECTION_NOT_OWNER') return 'Another window took match control.';
   if (code === 'MATCH_NOT_READY') return 'Waiting for the opponent to connect.';
-  if (code === 'STALE_STATE_VERSION') return 'Match state refreshed from the server.';
+  if (code === 'STALE_STATE_VERSION') return 'The table changed. Fresh server state restored.';
+  if (code === 'ILLEGAL_ACTION') return 'That move is no longer legal. Choose again.';
+  if (code === 'DEADLINE_EXPIRED') return 'The server deadline expired before that move arrived.';
   return 'The server rejected the last match command.';
 }
 
@@ -30,17 +38,28 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
   const [connectionState, setConnectionState] = useState<MatchConnectionState>('CONNECTING');
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(null);
   const [rejection, setRejection] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const realtime = useRef<MatchRealtimeConnection | null>(null);
 
   useEffect(() => {
     const connection = connectMatch(matchId, {
-      onConnectionState: setConnectionState,
+      onConnectionState: (state) => {
+        setConnectionState(state);
+        if (state !== 'ONLINE') setPending(false);
+      },
       onSnapshot: (next) => {
         setSnapshot(next);
+        setPending(false);
         setRejection(null);
       },
-      onRejected: (code) => setRejection(rejectionLabel(code)),
-      onProtocolError: () => setRejection('Realtime data could not be validated. Reconnecting…'),
+      onRejected: (code) => {
+        setPending(false);
+        setRejection(rejectionLabel(code));
+      },
+      onProtocolError: () => {
+        setPending(false);
+        setRejection('Realtime data could not be validated. Reconnecting…');
+      },
     });
     realtime.current = connection;
     return () => {
@@ -49,21 +68,48 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
     };
   }, [matchId]);
 
-  const game = snapshot?.game;
-  const viewer = game?.viewer;
-  const opponent = viewer === 'A' ? 'B' : 'A';
+  const submitAction = (action: WireGameAction): boolean => {
+    if (pending) return false;
+    const sent = realtime.current?.sendAction(action) ?? false;
+    if (sent) {
+      setPending(true);
+      setRejection(null);
+    } else {
+      setRejection('The match connection is not ready for a move yet.');
+    }
+    return sent;
+  };
+
+  const surrender = (): boolean => {
+    if (pending) return false;
+    const sent = realtime.current?.surrender() ?? false;
+    if (sent) {
+      setPending(true);
+      setRejection(null);
+    } else {
+      setRejection('The match connection is not ready to surrender yet.');
+    }
+    return sent;
+  };
 
   return (
-    <main className="shell">
+    <main className="shell shell--match">
       <section className="match-shell" aria-labelledby="match-title">
-        <header className="match-header">
+        <header className="match-header match-header--table">
           <div>
-            <p className="eyebrow">Authoritative match</p>
+            <p className="eyebrow">Live table</p>
             <h1 id="match-title">CARAVAN</h1>
           </div>
-          <span className={`connection-pill connection-pill--${connectionState.toLowerCase()}`}>
-            {connectionLabel(connectionState)}
-          </span>
+          <div className="match-header__status">
+            {snapshot !== null && (
+              <span className="state-version" title="Authoritative state version">
+                v{snapshot.stateVersion}
+              </span>
+            )}
+            <span className={`connection-pill connection-pill--${connectionState.toLowerCase()}`}>
+              {connectionLabel(connectionState)}
+            </span>
+          </div>
         </header>
 
         {snapshot === null ? (
@@ -78,63 +124,40 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
           </section>
         ) : (
           <>
-            <section className="panel match-summary">
-              <div>
-                <span className="section-kicker">State version</span>
-                <strong>{snapshot.stateVersion}</strong>
-              </div>
-              <div>
-                <span className="section-kicker">Phase</span>
-                <strong>{game?.phase ?? '—'}</strong>
-              </div>
-              <div>
-                <span className="section-kicker">Turn</span>
-                <strong>{game?.activePlayer === viewer ? 'Yours' : 'Opponent'}</strong>
-              </div>
-            </section>
+            <CardTable
+              snapshot={snapshot}
+              connectionReady={connectionState === 'ONLINE'}
+              pending={pending}
+              rejection={rejection}
+              onAction={submitAction}
+              onSurrender={surrender}
+            />
 
-            {game !== undefined && viewer !== undefined && opponent !== undefined && (
-              <section className="lane-grid" aria-label="Current route values">
-                {[0, 1, 2].map((route) => (
-                  <article className="lane-card" key={route}>
-                    <span className="lane-card__name">Route {route + 1}</span>
-                    <div className="lane-values">
-                      <span>
-                        <small>You</small>
-                        {game.players[viewer].routes[route as 0 | 1 | 2].value}
-                      </span>
-                      <span className="lane-vs">vs</span>
-                      <span>
-                        <small>Rival</small>
-                        {game.players[opponent].routes[route as 0 | 1 | 2].value}
-                      </span>
-                    </div>
-                  </article>
-                ))}
-              </section>
-            )}
-
-            <section className="panel transport-note">
-              <h2>
-                {snapshot.status === 'FINISHED' ? 'Match finished' : 'Table transport is live'}
-              </h2>
-              <p className="muted">
-                {snapshot.status === 'FINISHED'
-                  ? `Result: ${snapshot.result?.reason ?? 'complete'}.`
-                  : 'This PR stops at the authoritative snapshot boundary. Card interaction and tactile table presentation are the next focused layer.'}
-              </p>
-              {rejection !== null && <p className="notice notice--warn">{rejection}</p>}
-              {rejection?.includes('Another window') === true && (
+            {rejection?.includes('Another window') === true && (
+              <section className="panel control-recovery">
+                <p>{rejection}</p>
                 <button className="button" onClick={() => realtime.current?.requestControl()}>
                   Take control here
                 </button>
-              )}
-              {snapshot.status === 'FINISHED' && (
+              </section>
+            )}
+
+            {snapshot.status === 'FINISHED' && (
+              <section className="panel match-result">
+                <span className="section-kicker">Final result</span>
+                <h2>
+                  {snapshot.result?.winner === null
+                    ? 'No contest'
+                    : snapshot.result?.winner === snapshot.game.viewer
+                      ? 'You won the route.'
+                      : 'Opponent won the route.'}
+                </h2>
+                <p className="muted">Finish reason: {snapshot.result?.reason ?? 'complete'}.</p>
                 <button className="button button--primary" onClick={onExit}>
                   Return to Play
                 </button>
-              )}
-            </section>
+              </section>
+            )}
           </>
         )}
       </section>
