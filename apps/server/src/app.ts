@@ -11,6 +11,7 @@ import {
   sessionAccount,
 } from './accounts.js';
 import type { Config } from './config.js';
+import { installMatchEntryRoutes } from './match-entry-routes.js';
 import { MatchService } from './match-service.js';
 import { PostgresMatchStore } from './postgres-match-store.js';
 import { installRealtimeRuntime } from './realtime.js';
@@ -35,6 +36,17 @@ function publicErrorCode(error: unknown): string {
 function statusForError(code: string): number {
   if (code === 'UNAUTHENTICATED') return 401;
   if (code === 'ACCOUNT_DISABLED') return 403;
+  if (code === 'CHALLENGE_NOT_FOUND') return 404;
+  if (code === 'CHALLENGE_EXPIRED') return 410;
+  if (
+    code === 'MATCH_ALREADY_ACTIVE' ||
+    code === 'MATCHMAKING_NOT_QUEUED' ||
+    code === 'CHALLENGE_UNAVAILABLE' ||
+    code === 'CANNOT_ACCEPT_OWN_CHALLENGE' ||
+    code === 'CANNOT_DECLINE_OWN_CHALLENGE'
+  ) {
+    return 409;
+  }
   if (code === 'INTERNAL_ERROR' || code === 'ACCOUNT_NOT_FOUND') return 500;
   return 400;
 }
@@ -47,6 +59,7 @@ export async function buildServer(pool: pg.Pool, config: Config, options: BuildS
         'req.headers.cookie',
         'req.headers.authorization',
         'req.body.initData',
+        'req.body.inviteToken',
         'res.headers.set-cookie',
       ],
     },
@@ -117,6 +130,8 @@ export async function buildServer(pool: pg.Pool, config: Config, options: BuildS
     reply.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
     return { ok: true as const };
   });
+
+  await installMatchEntryRoutes(app, pool, config);
 
   if (options.realtime !== false) {
     const matchService =

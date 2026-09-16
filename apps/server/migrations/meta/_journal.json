@@ -15,6 +15,13 @@
       "when": 1789548900000,
       "tag": "0001_accounts_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789557600000,
+      "tag": "0002_match_entry",
+      "breakpoints": true
     }
   ]
 }

@@ -35,16 +35,16 @@ function assertSafeStateVersion(value: number): void {
 }
 
 export class PostgresMatchStore implements MatchStore {
-  readonly #pool: pg.Pool;
+  readonly #database: pg.Pool | pg.PoolClient;
 
-  public constructor(pool: pg.Pool) {
-    this.#pool = pool;
+  public constructor(database: pg.Pool | pg.PoolClient) {
+    this.#database = database;
   }
 
   public async create(match: AuthoritativeMatch): Promise<void> {
     assertSafeStateVersion(match.stateVersion);
     const snapshot = serializePersistedMatch(match);
-    await this.#pool.query(
+    await this.#database.query(
       `INSERT INTO caravan_matches
         (id, state_version, status, snapshot_schema_version, snapshot)
        VALUES ($1, $2, $3, $4, $5::jsonb)`,
@@ -59,7 +59,7 @@ export class PostgresMatchStore implements MatchStore {
   }
 
   public async load(matchId: MatchId): Promise<AuthoritativeMatch | null> {
-    const result = await this.#pool.query<MatchRow>(
+    const result = await this.#database.query<MatchRow>(
       `SELECT id::text,
               state_version::text,
               status,
@@ -81,7 +81,7 @@ export class PostgresMatchStore implements MatchStore {
   }
 
   public async listActiveMatchIds(): Promise<readonly MatchId[]> {
-    const result = await this.#pool.query<MatchIdRow>(
+    const result = await this.#database.query<MatchIdRow>(
       `SELECT id::text
          FROM caravan_matches
         WHERE status = 'ACTIVE'
@@ -103,7 +103,7 @@ export class PostgresMatchStore implements MatchStore {
     }
 
     const snapshot = serializePersistedMatch(next);
-    const result = await this.#pool.query(
+    const result = await this.#database.query(
       `UPDATE caravan_matches
           SET state_version = $3,
               status = $4,

@@ -24,7 +24,7 @@ describeDatabase('PostgresMatchStore', () => {
   });
 
   beforeEach(async () => {
-    await pool.query('TRUNCATE TABLE caravan_matches');
+    await pool.query('TRUNCATE TABLE caravan_matches CASCADE');
   });
 
   afterAll(async () => {

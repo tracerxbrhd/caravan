@@ -45,5 +45,7 @@ export function testConfig(databaseUrl: string): Config {
     TELEGRAM_AUTH_MAX_AGE_SECONDS: 300,
     TURN_TIMEOUT_SECONDS: 60,
     RECONNECT_GRACE_SECONDS: 30,
+    MATCHMAKING_LEASE_SECONDS: 90,
+    CHALLENGE_TTL_SECONDS: 900,
   };
 }
