@@ -9,4 +9,5 @@ export * from './match-store.js';
 export * from './match-types.js';
 export * from './postgres-match-store.js';
 export * from './random.js';
+export * from './realtime.js';
 export * from './starter-deck.js';
