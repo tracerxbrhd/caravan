@@ -74,6 +74,10 @@ function challengeView(row: ChallengeRow): ChallengeView {
   });
 }
 
+async function lockMatchmakingQueue(db: pg.PoolClient): Promise<void> {
+  await db.query("SELECT pg_advisory_xact_lock(hashtextextended('MATCHMAKING_QUEUE', 0))");
+}
+
 async function lockAccount(db: pg.PoolClient, accountId: string): Promise<void> {
   await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
     `MATCH_ENTRY:${accountId}`,
@@ -165,7 +169,9 @@ export class MatchEntryService {
 
   public async matchmakingStatus(accountId: string): Promise<MatchmakingStatus> {
     const matchId = await activeMatchId(this.#pool, accountId);
-    if (matchId !== null) return matchmakingStatusSchema.parse({ status: 'MATCH_FOUND', matchId });
+    if (matchId !== null) {
+      return matchmakingStatusSchema.parse({ status: 'MATCH_FOUND', matchId });
+    }
 
     const row = (
       await this.#pool.query<QueueRow>(
@@ -186,6 +192,7 @@ export class MatchEntryService {
 
   public async joinMatchmaking(accountId: string): Promise<MatchmakingStatus> {
     return transaction(this.#pool, async (db) => {
+      await lockMatchmakingQueue(db);
       await lockAccount(db, accountId);
       const now = new Date(this.#now());
       const existingMatchId = await activeMatchId(db, accountId);
@@ -382,7 +389,10 @@ export class MatchEntryService {
     return challengeView(row);
   }
 
-  public async acceptChallenge(accountId: string, inviteToken: InviteToken): Promise<AcceptedChallenge> {
+  public async acceptChallenge(
+    accountId: string,
+    inviteToken: InviteToken,
+  ): Promise<AcceptedChallenge> {
     return transaction(this.#pool, async (db) => {
       const initial = (
         await db.query<ChallengeRow>(
@@ -399,28 +409,26 @@ export class MatchEntryService {
         )
       ).rows[0];
       if (initial === undefined) throw new Error('CHALLENGE_NOT_FOUND');
-      if (initial.inviter_account_id === accountId) throw new Error('CANNOT_ACCEPT_OWN_CHALLENGE');
+      if (initial.inviter_account_id === accountId) {
+        throw new Error('CANNOT_ACCEPT_OWN_CHALLENGE');
+      }
 
       await lockAccounts(db, [initial.inviter_account_id, accountId]);
       const row = await loadChallengeByIdForUpdate(db, challengeIdSchema.parse(initial.id));
       if (row === null) throw new Error('CHALLENGE_NOT_FOUND');
 
-      if (row.status === 'ACCEPTED' && row.resolved_by_account_id === accountId && row.match_id !== null) {
+      if (
+        row.status === 'ACCEPTED' &&
+        row.resolved_by_account_id === accountId &&
+        row.match_id !== null
+      ) {
         const matchId = matchIdSchema.parse(row.match_id);
         return { challenge: challengeView(row) as AcceptedChallenge['challenge'], matchId };
       }
       if (row.status !== 'PENDING') throw new Error('CHALLENGE_UNAVAILABLE');
 
       const now = new Date(this.#now());
-      if (row.expires_at.getTime() <= now.getTime()) {
-        await db.query(
-          `UPDATE caravan_private_challenges
-              SET status = 'EXPIRED', resolved_at = $2
-            WHERE id = $1`,
-          [row.id, now],
-        );
-        throw new Error('CHALLENGE_EXPIRED');
-      }
+      if (row.expires_at.getTime() <= now.getTime()) throw new Error('CHALLENGE_EXPIRED');
 
       if ((await activeMatchId(db, row.inviter_account_id)) !== null) {
         throw new Error('CHALLENGE_UNAVAILABLE');
@@ -460,7 +468,10 @@ export class MatchEntryService {
     });
   }
 
-  public async declineChallenge(accountId: string, inviteToken: InviteToken): Promise<ChallengeResolution> {
+  public async declineChallenge(
+    accountId: string,
+    inviteToken: InviteToken,
+  ): Promise<ChallengeResolution> {
     return transaction(this.#pool, async (db) => {
       const row = (
         await db.query<ChallengeRow>(
@@ -482,7 +493,8 @@ export class MatchEntryService {
       if (row.status !== 'PENDING') throw new Error('CHALLENGE_UNAVAILABLE');
 
       const now = new Date(this.#now());
-      const status: ChallengeStatus = row.expires_at.getTime() <= now.getTime() ? 'EXPIRED' : 'DECLINED';
+      const status: ChallengeStatus =
+        row.expires_at.getTime() <= now.getTime() ? 'EXPIRED' : 'DECLINED';
       const resolved = (
         await db.query<ChallengeRow>(
           `UPDATE caravan_private_challenges
@@ -505,16 +517,22 @@ export class MatchEntryService {
     });
   }
 
-  public async cancelChallenge(accountId: string, challengeId: ChallengeId): Promise<ChallengeResolution> {
+  public async cancelChallenge(
+    accountId: string,
+    challengeId: ChallengeId,
+  ): Promise<ChallengeResolution> {
     return transaction(this.#pool, async (db) => {
       await lockAccount(db, accountId);
       const row = await loadChallengeByIdForUpdate(db, challengeId);
-      if (row === null || row.inviter_account_id !== accountId) throw new Error('CHALLENGE_NOT_FOUND');
+      if (row === null || row.inviter_account_id !== accountId) {
+        throw new Error('CHALLENGE_NOT_FOUND');
+      }
       if (row.status === 'CANCELLED') return { challenge: challengeView(row) };
       if (row.status !== 'PENDING') throw new Error('CHALLENGE_UNAVAILABLE');
 
       const now = new Date(this.#now());
-      const status: ChallengeStatus = row.expires_at.getTime() <= now.getTime() ? 'EXPIRED' : 'CANCELLED';
+      const status: ChallengeStatus =
+        row.expires_at.getTime() <= now.getTime() ? 'EXPIRED' : 'CANCELLED';
       const resolved = (
         await db.query<ChallengeRow>(
           `UPDATE caravan_private_challenges
