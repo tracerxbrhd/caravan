@@ -10,10 +10,7 @@ export const cryptoMatchRandomSource: MatchRandomSource = {
   nextInt: (maxExclusive) => randomInt(0, maxExclusive),
 };
 
-export function fisherYatesShuffle<T>(
-  input: readonly T[],
-  random: MatchRandomSource,
-): T[] {
+export function fisherYatesShuffle<T>(input: readonly T[], random: MatchRandomSource): T[] {
   const result = [...input];
 
   for (let index = result.length - 1; index > 0; index -= 1) {

@@ -44,13 +44,7 @@ function actionFingerprint(action: GameAction): readonly unknown[] {
     case 'PLAY_VALUE_CARD':
       return [action.type, action.cardId, action.route];
     case 'PLAY_MODIFIER_CARD':
-      return [
-        action.type,
-        action.cardId,
-        action.targetPlayer,
-        action.route,
-        action.targetCardId,
-      ];
+      return [action.type, action.cardId, action.targetPlayer, action.route, action.targetCardId];
     case 'DISCARD_HAND_CARD':
       return [action.type, action.cardId];
     case 'DISBAND_ROUTE':
@@ -149,20 +143,14 @@ export class MatchService {
     return { matchId };
   }
 
-  public async getSnapshot(
-    matchId: MatchId,
-    accountId: AccountId,
-  ): Promise<MatchSnapshot | null> {
+  public async getSnapshot(matchId: MatchId, accountId: AccountId): Promise<MatchSnapshot | null> {
     const match = await this.#store.load(matchId);
     if (match === null) return null;
     const seat = seatFor(match, accountId);
     return seat === null ? null : this.#snapshot(match, seat);
   }
 
-  public async handleCommand(
-    accountId: AccountId,
-    command: ClientCommand,
-  ): Promise<ServerMessage> {
+  public async handleCommand(accountId: AccountId, command: ClientCommand): Promise<ServerMessage> {
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const match = await this.#store.load(command.matchId);
       if (match === null) {

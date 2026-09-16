@@ -1,9 +1,5 @@
 import { PROTOCOL_VERSION, type ClientCommand, type MatchId } from '@caravan/protocol';
-import {
-  InMemoryMatchStore,
-  MatchService,
-  type MatchRandomSource,
-} from '../src/index.js';
+import { InMemoryMatchStore, MatchService, type MatchRandomSource } from '../src/index.js';
 
 export const MATCH_ID = '00000000-0000-4000-8000-000000000005' as MatchId;
 export const ACCOUNT_A = 'account-a';

@@ -11,21 +11,7 @@ import { fisherYatesShuffle, type MatchRandomSource } from './random.js';
 export const STARTER_DECK_SOURCE_SET_ID = 'starter-standard-v1' as const;
 export const STARTER_DECK_CARD_COUNT = 54 as const;
 
-const STANDARD_RANKS = [
-  'ACE',
-  2,
-  3,
-  4,
-  5,
-  6,
-  7,
-  8,
-  9,
-  10,
-  'JACK',
-  'QUEEN',
-  'KING',
-] as const;
+const STANDARD_RANKS = ['ACE', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'JACK', 'QUEEN', 'KING'] as const;
 
 interface StarterCardTemplate {
   readonly deckCardId: string;

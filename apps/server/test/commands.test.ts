@@ -79,10 +79,7 @@ describe('authoritative command processing', () => {
     const b = await service.getSnapshot(matchId, ACCOUNT_B);
     const bAction = b?.game.legalActions[0];
     if (bAction === undefined) throw new Error('Expected opening action for B.');
-    const stale = await service.handleCommand(
-      ACCOUNT_B,
-      gameplayCommand(COMMAND_TWO, 0, bAction),
-    );
+    const stale = await service.handleCommand(ACCOUNT_B, gameplayCommand(COMMAND_TWO, 0, bAction));
 
     expect(stale.type).toBe('COMMAND_REJECTED');
     if (stale.type !== 'COMMAND_REJECTED') throw new Error('Expected stale rejection.');
@@ -96,8 +93,8 @@ describe('authoritative command processing', () => {
   it('maps wrong-turn and illegal actions to stable protocol rejections', async () => {
     const { service, matchId } = await createHarness();
     const b = await service.getSnapshot(matchId, ACCOUNT_B);
-    const valueCard = b?.game.hand.find((card) =>
-      card.face.rank === 'ACE' || typeof card.face.rank === 'number',
+    const valueCard = b?.game.hand.find(
+      (card) => card.face.rank === 'ACE' || typeof card.face.rank === 'number',
     );
     if (valueCard === undefined) throw new Error('Expected value card in B opening hand.');
 
