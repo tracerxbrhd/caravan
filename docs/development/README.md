@@ -129,7 +129,7 @@ GET  /ws   (WebSocket upgrade)
 
 The WebSocket endpoint requires the existing `caravan_session` cookie and the configured `PUBLIC_ORIGIN`. Gameplay identity is resolved from that session; clients do not send Telegram IDs or replacement account identity in realtime commands.
 
-A match participant uses `RESYNC` to establish/take over control for a match and receive a fresh sanitized snapshot. State-changing commands are accepted only from the controlling socket. When both players are not yet connected, the realtime boundary returns `MATCH_NOT_READY` rather than allowing early play.
+A match participant uses `RESYNC` to establish/take over control for a match and receive a fresh sanitized snapshot. State-changing commands are accepted only from the controlling socket. Before the match has started — while no authoritative turn deadline exists because both players have not connected yet — the realtime boundary returns `MATCH_NOT_READY` rather than allowing early play. Once the match has started, a later opponent disconnect does not freeze the connected active player; reconnect grace is enforced independently by the server.
 
 In local development the current Vite shell proxies `/api` to `127.0.0.1:3000`; client-side `/ws` integration belongs to the upcoming match client layer.
 
@@ -218,7 +218,8 @@ Server tests protect:
 - restart recovery of process-local connection state;
 - authenticated real WebSocket handshake and `RESYNC`;
 - controlling-socket takeover and stale-socket rejection;
-- match-readiness rejection until both players connect;
+- pre-start match-readiness rejection until both players have connected;
+- legal active-player commands remaining accepted while the opponent is inside reconnect grace;
 - per-recipient WebSocket snapshots not exposing the opponent hand;
 - accepted realtime mutations being durable before peer broadcast.
 
