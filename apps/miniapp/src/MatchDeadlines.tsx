@@ -15,17 +15,17 @@ export function MatchDeadlines({
   readonly clockAnchor: ServerClockAnchor | null;
 }) {
   const notices = useMemo(() => matchDeadlineNotices(snapshot), [snapshot]);
-  const [clientNowMs, setClientNowMs] = useState(Date.now);
+  const [clientMonotonicNowMs, setClientMonotonicNowMs] = useState(() => performance.now());
 
   useEffect(() => {
     if (notices.length === 0 || clockAnchor === null) return;
-    setClientNowMs(Date.now());
-    const timer = setInterval(() => setClientNowMs(Date.now()), 250);
+    setClientMonotonicNowMs(performance.now());
+    const timer = setInterval(() => setClientMonotonicNowMs(performance.now()), 250);
     return () => clearInterval(timer);
   }, [clockAnchor, notices.length]);
 
   if (notices.length === 0 || clockAnchor === null) return null;
-  const serverNowMs = estimatedServerNow(clockAnchor, clientNowMs);
+  const serverNowMs = estimatedServerNow(clockAnchor, clientMonotonicNowMs);
 
   return (
     <section className="match-deadlines" aria-label="Authoritative match deadlines" aria-live="polite">
