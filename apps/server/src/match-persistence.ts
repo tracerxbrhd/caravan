@@ -1,7 +1,6 @@
 import {
   GAME_STATE_SCHEMA_VERSION,
   assertGameState,
-  type AuthoritativeMatch as NeverAuthoritativeMatch,
   type CaravanGameState,
 } from '@caravan/game-engine';
 import {
@@ -18,8 +17,6 @@ import {
 } from '@caravan/protocol';
 import { z } from 'zod';
 import type { AuthoritativeMatch } from './match-types.js';
-
-void (undefined as unknown as NeverAuthoritativeMatch);
 
 export const MATCH_PERSISTENCE_SCHEMA_VERSION = 1 as const;
 
@@ -198,10 +195,7 @@ export const authoritativeMatchPersistenceSchema: z.ZodType<AuthoritativeMatch> 
           message: 'Processed command account must be a match participant.',
         });
       }
-      if (
-        record.acceptedStateVersion <= 0 ||
-        record.acceptedStateVersion > match.stateVersion
-      ) {
+      if (record.acceptedStateVersion <= 0 || record.acceptedStateVersion > match.stateVersion) {
         context.addIssue({
           code: 'custom',
           path: ['processedCommands', index, 'acceptedStateVersion'],
