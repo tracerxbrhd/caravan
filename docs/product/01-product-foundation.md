@@ -47,14 +47,16 @@ A player should be able to:
 
 In priority order:
 
-1. independently specify the rules precisely;
-2. build and heavily test the deterministic game engine;
-3. create a concise interactive tutorial;
+1. maintain the accepted canonical rules specification in `05-game-rules.md`;
+2. build and heavily test the deterministic game engine from that specification;
+3. create the concise interactive tutorial defined by the accepted UX contract;
 4. support private challenges and casual matchmaking;
 5. deliver reliable authoritative PvP and reconnect/recovery;
 6. make card handling feel polished on touch devices;
 7. add history/profile/rating features only when the core match loop is healthy;
 8. validate Telegram usage before expanding distribution.
+
+The current vertical-slice boundary is defined in `06-first-playable-scope.md`.
 
 Ranked play is a natural direction, but it must not delay correctness, onboarding, casual/private play, or multiplayer reliability.
 
@@ -63,6 +65,8 @@ Ranked play is a natural direction, but it must not delay correctness, onboardin
 Competitive state is server-authoritative. Cosmetics, progression, or future monetization must never change card strength, shuffle odds, legal actions, hidden information, or any other competitive outcome.
 
 No pay-to-win mechanics.
+
+The first playable deliberately uses equal server-defined card availability for all players. Player-facing custom deck building may be introduced later, but card access itself must remain competitively fair.
 
 ## Product non-goals
 
