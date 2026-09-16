@@ -22,6 +22,7 @@ The root `README.md` is intentionally product-facing. Internal technical detail 
 - [`architecture/04-game-domain-model.md`](architecture/04-game-domain-model.md) — engine-facing card/route/action/state/projection domain contract.
 - [`architecture/05-protocol-contracts.md`](architecture/05-protocol-contracts.md) — typed/runtime-validated wire commands, sanitized snapshots, lifecycle results, and rejection contracts.
 - [`architecture/06-authoritative-match-service.md`](architecture/06-authoritative-match-service.md) — secure match initialization, command idempotency, state-version concurrency, lifecycle finalization, and storage port.
+- [`architecture/07-durable-match-persistence.md`](architecture/07-durable-match-persistence.md) — PostgreSQL authoritative snapshots, persistence versioning, atomic CAS, retry durability, restart recovery, migrations, and local database containerization.
 
 ## Development
 

@@ -4,7 +4,7 @@
 
 Accepted as the initial architecture direction. The repository scaffold implements the agreed pnpm/TypeScript monorepo boundaries; concrete runtime behavior is added only through focused changes.
 
-As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The deterministic game engine, typed/runtime-validated protocol contracts, and the initial authoritative match-service domain layer are implemented. The Mini App remains a minimal React/Vite shell, while bot runtime, network transport, authentication, durable persistence, and production backend composition remain intentionally unimplemented rather than represented by fake placeholders.
+As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The deterministic game engine, typed/runtime-validated protocol contracts, authoritative match-service domain layer, and PostgreSQL-backed durable match persistence are implemented. The Mini App remains a minimal React/Vite shell, while bot runtime, network transport, authentication, connection ownership, reconnect/deadline scheduling, matchmaking, and production backend composition remain intentionally unimplemented rather than represented by fake placeholders.
 
 ## Reference architecture
 
@@ -60,7 +60,7 @@ The implemented engine models:
 - rule-domain events;
 - explicit player-safe projections.
 
-Durable snapshot restore/schema migration remains a persistence-layer concern to add when persistence arrives.
+Durable storage is owned by the server persistence layer. The engine contributes its own state schema version and invariant validation but remains unaware of PostgreSQL or snapshot envelopes.
 
 Randomness is injected. The engine must not be the live entropy authority.
 
@@ -79,15 +79,15 @@ Use strict types and discriminated unions for actions/events rather than generic
 - match result/finalization;
 - future rating/progression/economy effects.
 
-The initial match-service implementation now owns secure starter-deck shuffle/mulligan, starting-seat selection, authoritative match state, `stateVersion`, command idempotency, stale rejection, game-engine application, lifecycle finalization, and per-player snapshot projection.
+The match-service implementation owns secure starter-deck shuffle/mulligan, starting-seat selection, authoritative match state, `stateVersion`, command idempotency, stale rejection, game-engine application, lifecycle finalization, and per-player snapshot projection.
 
-Its current storage adapter is intentionally in-memory and non-durable. PostgreSQL, restart recovery, network transport, authentication, connection ownership, reconnect/deadline scheduling, and matchmaking remain later focused layers.
+`MatchStore` remains the storage boundary. `InMemoryMatchStore` is retained for focused tests, while `PostgresMatchStore` now durably stores versioned authoritative JSONB snapshots and preserves compare-and-set/idempotency semantics across process restarts. Network transport, authentication, connection ownership, reconnect/deadline scheduling, and matchmaking remain later focused layers.
 
 The server must never accept client-provided game state as authoritative.
 
 A modular monolith is preferred initially. Do not add microservices, Redis, queues, Kafka/RabbitMQ, Kubernetes, or distributed coordination infrastructure without an objective need.
 
-See [`06-authoritative-match-service.md`](06-authoritative-match-service.md) for the implemented service boundary and concurrency contract.
+See [`06-authoritative-match-service.md`](06-authoritative-match-service.md) for the implemented service boundary and concurrency contract and [`07-durable-match-persistence.md`](07-durable-match-persistence.md) for the durable storage/recovery contract.
 
 ## Protocol
 
@@ -101,13 +101,15 @@ See [`05-protocol-contracts.md`](05-protocol-contracts.md) for the normative wir
 
 ## Data
 
-PostgreSQL is the intended durable source of truth unless an accepted architecture decision changes it.
+PostgreSQL is the durable source of truth for authoritative match persistence unless an accepted architecture decision changes it.
 
 Use internal domain account IDs. Telegram user IDs belong to external identity records and must not become gameplay ownership keys.
 
-Authoritative active-match state may be stored as a versioned snapshot suitable for recovery after a normal process/container restart. Complex game state should not be decomposed into relational rows merely to make the schema look normalized when JSONB is the better persistence boundary.
+Authoritative match state is stored as a versioned JSONB snapshot suitable for recovery after a normal process/container restart. Complex game state is not decomposed into relational rows merely to make the schema look normalized when JSONB is the correct persistence boundary.
 
-The current `MatchStore` interface is a deliberate persistence seam. A PostgreSQL implementation must preserve its compare-and-set state-version semantics transactionally and must persist processed command identity strongly enough for retry idempotency and recovery.
+The PostgreSQL `MatchStore` adapter preserves compare-and-set state-version semantics in one conditional update and persists processed command identity in the same authoritative snapshot as the accepted state. Persistence envelope versioning is separate from the game-engine state schema version, and restored snapshots are runtime-validated before use.
+
+Committed SQL migrations under `apps/server/migrations/` are the supported database schema-evolution path. PostgreSQL 18 is used by the local Docker Compose service and CI integration environment.
 
 ## Client
 

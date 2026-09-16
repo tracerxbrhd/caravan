@@ -1,12 +1,12 @@
 # Development
 
-CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, typed/runtime-validated `packages/protocol` contracts, and an initial authoritative in-memory match-service domain layer in `apps/server`. Bot runtime, Telegram authentication, durable PostgreSQL persistence, realtime transport/recovery, matchmaking, and production deployment remain intentionally unimplemented unless later documentation says otherwise.
+CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, typed/runtime-validated `packages/protocol` contracts, authoritative match-service domain layer, and PostgreSQL-backed durable match persistence in `apps/server`. Bot runtime, Telegram authentication, realtime transport/connection recovery, matchmaking, and production application deployment remain intentionally unimplemented unless later documentation says otherwise.
 
 ## Before implementation work
 
 Read the documentation map in [`../README.md`](../README.md), then at minimum read the contracts relevant to the task.
 
-For gameplay, server, protocol, or match-client implementation, the required baseline is:
+For gameplay, server, protocol, persistence, or match-client implementation, the required baseline is:
 
 1. [`../product/01-product-foundation.md`](../product/01-product-foundation.md)
 2. [`../product/02-player-experience-and-platform-strategy.md`](../product/02-player-experience-and-platform-strategy.md)
@@ -20,6 +20,7 @@ For gameplay, server, protocol, or match-client implementation, the required bas
 10. [`../architecture/04-game-domain-model.md`](../architecture/04-game-domain-model.md)
 11. [`../architecture/05-protocol-contracts.md`](../architecture/05-protocol-contracts.md)
 12. [`../architecture/06-authoritative-match-service.md`](../architecture/06-authoritative-match-service.md)
+13. [`../architecture/07-durable-match-persistence.md`](../architecture/07-durable-match-persistence.md)
 
 `product/04-market-and-competitive-context.md` is useful product context but is not an implementation contract.
 
@@ -36,7 +37,9 @@ The verified baseline follows the proven UNDERGAMMON architecture/tooling direct
 - Prettier 3;
 - Vitest 4;
 - fast-check 4 for property tests;
-- Zod 4 for runtime protocol validation;
+- Zod 4 for runtime boundary validation;
+- PostgreSQL 18;
+- `pg` + Drizzle PostgreSQL migrator for durable server persistence;
 - React 19 + Vite 8 for the Mini App shell.
 
 Dependency upgrades should be deliberate and verified rather than mixed into unrelated gameplay work.
@@ -47,7 +50,7 @@ Dependency upgrades should be deliberate and verified rather than mixed into unr
 apps/
   miniapp/       React/Vite client shell
   bot/           Telegram bot application boundary
-  server/        authoritative match-service implementation; transport/persistence still pending
+  server/        authoritative match service + durable PostgreSQL persistence; transport/auth still pending
 
 packages/
   game-engine/   implemented deterministic CARAVAN rules engine
@@ -58,13 +61,13 @@ packages/
 
 `packages/protocol` owns strict versioned wire schemas for gameplay/surrender/resync commands, sanitized `PlayerView` snapshots, match lifecycle results, and stable rejection/error payloads. It deliberately exposes no wire schema for privileged `CaravanGameState`.
 
-`apps/server` now owns the initial authoritative match-service semantics: equal starter-deck construction, crypto-backed Fisher-Yates/mulligan and starting-seat selection, match ownership, `stateVersion`, processed command identity, stale/duplicate rejection, CAS concurrency, game-engine execution, surrender/timeout/no-contest finalization primitives, and per-player protocol snapshots.
+`apps/server` owns equal starter-deck construction, crypto-backed Fisher-Yates/mulligan and starting-seat selection, match ownership, `stateVersion`, processed command identity, stale/duplicate rejection, CAS concurrency, game-engine execution, surrender/timeout/no-contest finalization primitives, per-player protocol snapshots, versioned authoritative persistence, migrations, and PostgreSQL-backed restart recovery.
 
-The current `InMemoryMatchStore` is explicitly non-durable and exists to validate service semantics. PostgreSQL must replace it behind `MatchStore` without weakening compare-and-set or idempotency guarantees.
+`InMemoryMatchStore` remains useful for focused unit/service tests. `PostgresMatchStore` is the durable adapter and must preserve the same compare-and-set/idempotency contract. Raw authoritative snapshots contain hidden information and must never become client payloads.
 
-`bot` remains scaffold-only. `server` does not yet expose Fastify/WebSocket endpoints, authenticate Telegram users, persist matches, recover restarts, manage connection control, schedule deadlines, or perform matchmaking.
+`bot` remains scaffold-only. `server` does not yet expose Fastify/WebSocket endpoints, authenticate Telegram users, own live connections, schedule reconnect/turn deadlines, or perform matchmaking.
 
-The engine does not generate live randomness and does not own surrender, timeout, reconnect, persistence, WebSocket broadcasting, or server command idempotency/state-version semantics. The protocol describes wire boundaries; the server service now implements the initial command/state semantics.
+The engine does not generate live randomness and does not own surrender, timeout, reconnect, persistence, WebSocket broadcasting, or server command idempotency/state-version semantics. The protocol describes wire boundaries; the server service and persistence adapters implement the authoritative command/state/storage semantics.
 
 ## Setup
 
@@ -75,6 +78,22 @@ pnpm install
 ```
 
 The repository enforces supported Node/pnpm major versions through `package.json` and `.npmrc`.
+
+For PostgreSQL-backed work, copy the example environment and start the local database:
+
+```bash
+cp .env.example .env
+docker compose up -d db
+```
+
+Export/load `DATABASE_URL` from `.env`, then build the workspace and apply committed migrations:
+
+```bash
+pnpm build
+pnpm --filter @caravan/server db:migrate
+```
+
+The Compose file intentionally contains PostgreSQL only at this stage. It is a reproducible development/integration-test dependency, not the final production deployment stack.
 
 ## Commands
 
@@ -100,7 +119,9 @@ pnpm verify
 
 `pnpm format` writes formatting changes when needed.
 
-The game engine, protocol, and authoritative match service have substantive automated tests. Vitest still permits zero tests globally only because remaining scaffold-only apps do not yet have behavior worth testing. Do not add meaningless placeholder tests merely to increase a count.
+PostgreSQL integration tests run when `DATABASE_URL` is available. CI additionally sets `CARAVAN_REQUIRE_DATABASE_TESTS=1`, so database coverage cannot silently skip there.
+
+The game engine, protocol, authoritative match service, and durable match store have substantive automated tests. Vitest still permits zero tests globally only because remaining scaffold-only apps do not yet have behavior worth testing. Do not add meaningless placeholder tests merely to increase a count.
 
 ## Game-engine testing baseline
 
@@ -130,9 +151,9 @@ Protocol tests protect:
 - server match lifecycle results remaining separate from pure rule-engine outcomes;
 - stable engine rule error codes remaining synchronized with rejection payloads.
 
-## Match-service testing baseline
+## Match-service and persistence testing baseline
 
-Changes to authoritative match semantics should add or update tests in `apps/server/test/`.
+Changes to authoritative match semantics or persistence should add or update tests in `apps/server/test/`.
 
 Server tests protect:
 
@@ -145,13 +166,17 @@ Server tests protect:
 - stale commands receiving a fresh sanitized snapshot;
 - concurrent same-version commands committing at most once;
 - server lifecycle finishes remaining separate from pure game-engine results;
-- full matches remaining playable through the service using projected legal actions only.
+- full matches remaining playable through the service using projected legal actions only;
+- authoritative PostgreSQL snapshot round-trip;
+- atomic PostgreSQL same-version CAS races;
+- accepted-command/idempotency recovery after pool/service recreation;
+- persistence metadata divergence failing closed.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on pull requests and pushes to `main` using Node.js 24. The required verification sequence is frozen dependency install, build, lint, formatting check, strict typecheck, tests, and a production dependency audit.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main` using Node.js 24 and PostgreSQL 18. CI performs frozen dependency installation, validates `compose.yaml`, builds the workspace, applies committed database migrations, then runs the repository build/lint/format/typecheck/test gate and production dependency audit.
 
-CI should grow only when the corresponding implementation exists. PostgreSQL services, Playwright, Docker validation, migrations, and deployment checks belong in later PRs that actually introduce those capabilities.
+`CARAVAN_REQUIRE_DATABASE_TESTS=1` makes PostgreSQL integration coverage mandatory in CI. Playwright and production application-container/deployment checks should be added only when the corresponding runtime surfaces exist.
 
 ## Development principles
 
@@ -160,9 +185,11 @@ CI should grow only when the corresponding implementation exists. PostgreSQL ser
 - update docs alongside decisions that materially change product or architecture;
 - keep hidden-information security testable and explicit;
 - keep card ownership stable and explicit when modifiers cross player routes;
-- do not duplicate rules between server, protocol, and UI;
+- do not duplicate rules between server, protocol, persistence, and UI;
 - keep surrender/timeout/reconnect lifecycle out of the pure card-rule action model;
 - check duplicate command identity before stale-version rejection so retries remain idempotent;
-- persist/commit authoritative state before any future realtime broadcast;
+- commit authoritative state and processed-command identity atomically before any future realtime broadcast;
+- validate persisted snapshots on both write and restore;
+- use committed migrations rather than ad-hoc production schema changes;
 - do not introduce infrastructure for hypothetical scale;
 - never make the client authoritative merely to simplify a UI prototype.
