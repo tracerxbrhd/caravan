@@ -1,0 +1,87 @@
+name: PR10 Prep
+
+on:
+  push:
+    branches:
+      - feat/pr10-telegram-entry
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/pr10-telegram-entry
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install --global --allow-scripts=pnpm pnpm@12.4.1
+      - run: pnpm install --frozen-lockfile
+      - name: Sync source-of-truth docs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          dev = Path('docs/development/README.md')
+          text = dev.read_text()
+          text = text.replace(
+              "CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, typed/runtime-validated `packages/protocol` contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, authenticated Fastify HTTP runtime, authenticated WebSocket realtime runtime, and durable match-entry runtime in `apps/server`. Telegram `initData` authentication, provider-independent accounts, PostgreSQL-backed application sessions, casual matchmaking, private challenges, reconnect/deadline lifecycle, and the Mini App authentication bootstrap are implemented. Bot runtime, client Play/match UI/realtime transport, and production application deployment remain intentionally unimplemented unless later documentation says otherwise.",
+              "CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, typed/runtime-validated `packages/protocol` contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, authenticated Fastify HTTP runtime, authenticated WebSocket realtime runtime, durable match-entry runtime in `apps/server`, and a thin Telegram entry runtime in `apps/bot`. Telegram `initData` authentication, provider-independent accounts, PostgreSQL-backed application sessions, casual matchmaking, private challenges, reconnect/deadline lifecycle, bot `/start`/webhook/deep-link entry, and the Mini App authentication bootstrap are implemented. Client Play/match UI/realtime transport and production application deployment remain intentionally unimplemented unless later documentation says otherwise."
+          )
+          text = text.replace(
+              "  bot/           Telegram bot application boundary",
+              "  bot/           Telegram webhook + Mini App entry/deep-link runtime"
+          )
+          text = text.replace(
+              "`bot` remains scaffold-only. `server` now exposes authenticated HTTP match-entry routes and `/ws` for authenticated gameplay realtime. The Mini App does not yet contain the production Play/matchmaking flow or match WebSocket client/UI.",
+              "`bot` now exposes a minimal Telegram webhook runtime with `/start`, Mini App launch buttons, challenge deep-link fallback, and `/health`; it remains non-authoritative for accounts, challenges, and gameplay. `server` exposes authenticated HTTP match-entry routes and `/ws` for authenticated gameplay realtime. The Mini App does not yet consume launch context or contain the production Play/matchmaking flow or match WebSocket client/UI."
+          )
+          text = text.replace(
+              "RECONNECT_GRACE_SECONDS=30\nMATCHMAKING_LEASE_SECONDS=90\nCHALLENGE_TTL_SECONDS=900",
+              "RECONNECT_GRACE_SECONDS=30\nMATCHMAKING_LEASE_SECONDS=90\nCHALLENGE_TTL_SECONDS=900\nBOT_USERNAME=replace_with_bot_username\nBOT_HOST=0.0.0.0\nBOT_PORT=3001\nTELEGRAM_WEBHOOK_SECRET=replace_with_high_entropy_webhook_secret_32_chars"
+          )
+          text = text.replace(
+              "pnpm dev:miniapp\npnpm start:server",
+              "pnpm dev:miniapp\npnpm start:server\npnpm start:bot"
+          )
+          text = text.replace(
+              "The game engine, protocol, authoritative match service, durable match store, Telegram verifier, server configuration, authenticated HTTP runtime, match-entry lifecycle, realtime lifecycle, and actual WebSocket transport have substantive automated tests.",
+              "The game engine, protocol, authoritative match service, durable match store, Telegram verifier, server configuration, authenticated HTTP runtime, match-entry lifecycle, realtime lifecycle, actual WebSocket transport, and Telegram bot entry runtime have substantive automated tests."
+          )
+          if 'architecture/11-telegram-entry.md' not in text:
+              text = text.replace(
+                  "16. [`../architecture/10-match-entry.md`](../architecture/10-match-entry.md)",
+                  "16. [`../architecture/10-match-entry.md`](../architecture/10-match-entry.md)\n17. [`../architecture/11-telegram-entry.md`](../architecture/11-telegram-entry.md)"
+              )
+          dev.write_text(text)
+
+          arch = Path('docs/architecture/01-technical-foundation.md')
+          text = arch.read_text()
+          text = text.replace(
+              "The deterministic game engine, typed/runtime-validated protocol contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, Fastify HTTP runtime, provider-independent accounts, Telegram authentication, PostgreSQL-backed application sessions, authenticated WebSocket realtime/reconnect/deadline runtime, casual matchmaking, and private challenges are implemented. The Mini App has a Telegram platform adapter and authentication bootstrap but remains a minimal shell. Bot runtime, client Play/match UI/reconnect transport, and production backend composition remain intentionally unimplemented rather than represented by fake placeholders.",
+              "The deterministic game engine, typed/runtime-validated protocol contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, Fastify HTTP runtime, provider-independent accounts, Telegram authentication, PostgreSQL-backed application sessions, authenticated WebSocket realtime/reconnect/deadline runtime, casual matchmaking, private challenges, and thin Telegram bot entry/deep-link runtime are implemented. The Mini App has a Telegram platform adapter and authentication bootstrap but remains a minimal shell. Client Play/match UI/reconnect transport and production backend composition remain intentionally unimplemented rather than represented by fake placeholders."
+          )
+          text = text.replace(
+              "See [`06-authoritative-match-service.md`](06-authoritative-match-service.md) for the service boundary, [`07-durable-match-persistence.md`](07-durable-match-persistence.md) for durable storage/recovery, [`08-authenticated-server-runtime.md`](08-authenticated-server-runtime.md) for HTTP/authentication/session boundaries, [`09-authenticated-realtime-runtime.md`](09-authenticated-realtime-runtime.md) for WebSocket/reconnect/deadline behavior, and [`10-match-entry.md`](10-match-entry.md) for casual/private match entry behavior.",
+              "See [`06-authoritative-match-service.md`](06-authoritative-match-service.md) for the service boundary, [`07-durable-match-persistence.md`](07-durable-match-persistence.md) for durable storage/recovery, [`08-authenticated-server-runtime.md`](08-authenticated-server-runtime.md) for HTTP/authentication/session boundaries, [`09-authenticated-realtime-runtime.md`](09-authenticated-realtime-runtime.md) for WebSocket/reconnect/deadline behavior, [`10-match-entry.md`](10-match-entry.md) for casual/private match entry behavior, and [`11-telegram-entry.md`](11-telegram-entry.md) for the thin Telegram launch/deep-link boundary."
+          )
+          arch.write_text(text)
+          PY
+      - name: Format PR10
+        run: pnpm prettier --write apps/bot docs package.json .env.example
+      - name: Remove temporary workflow
+        run: rm .github/workflows/pr10-prep.yml
+      - name: Commit prepared branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: finalize PR10 formatting and docs"
+          git push origin HEAD:feat/pr10-telegram-entry
