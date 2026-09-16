@@ -1,0 +1,33 @@
+name: PR8 Format
+
+on:
+  push:
+    branches: [feat/pr8-realtime-runtime]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/pr8-realtime-runtime
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install --global --allow-scripts=pnpm pnpm@12.4.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write apps/server/test/runtime-realtime.integration.test.ts apps/server/src/realtime.ts docs/architecture/09-authenticated-realtime-runtime.md docs/development/README.md
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add apps/server/test/runtime-realtime.integration.test.ts apps/server/src/realtime.ts docs/architecture/09-authenticated-realtime-runtime.md docs/development/README.md
+          git commit -m "style: format PR8 realtime changes"
+          git push origin HEAD:feat/pr8-realtime-runtime
