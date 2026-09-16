@@ -12,7 +12,7 @@
     "build": "pnpm -r --if-present run build",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write . && git diff --exit-code -- apps/miniapp/src/CardTable.tsx apps/miniapp/src/platform.ts",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "vitest run --passWithNoTests",
     "test:ci": "vitest run --passWithNoTests --no-file-parallelism",
