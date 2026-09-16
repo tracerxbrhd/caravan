@@ -124,8 +124,7 @@ export type GameAction =
     };
 
 export type EventVisibility =
-  | { readonly type: 'PUBLIC' }
-  | { readonly type: 'PRIVATE'; readonly seat: PlayerSeat };
+  { readonly type: 'PUBLIC' } | { readonly type: 'PRIVATE'; readonly seat: PlayerSeat };
 
 export type GameEvent =
   | {

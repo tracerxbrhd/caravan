@@ -37,7 +37,8 @@ function initialPlayerState(
 function isValidFace(face: CardFace): boolean {
   if (face.rank === 'JOKER') return face.suit === null;
   if (!SUITS.includes(face.suit)) return false;
-  if (typeof face.rank === 'number') return Number.isInteger(face.rank) && face.rank >= 2 && face.rank <= 10;
+  if (typeof face.rank === 'number')
+    return Number.isInteger(face.rank) && face.rank >= 2 && face.rank <= 10;
   return ['ACE', 'JACK', 'QUEEN', 'KING'].includes(face.rank);
 }
 
@@ -53,8 +54,10 @@ function validateInitialDeck(seat: PlayerSeat, cards: readonly CardInstance[]): 
   let openingValueCount = 0;
 
   cards.forEach((card, index) => {
-    if (card.owner !== seat) violations.push(`Card ${card.id} has owner ${card.owner}, expected ${seat}.`);
-    if (cardIds.has(card.id)) violations.push(`Duplicate live card id ${card.id} in player ${seat} deck.`);
+    if (card.owner !== seat)
+      violations.push(`Card ${card.id} has owner ${card.owner}, expected ${seat}.`);
+    if (cardIds.has(card.id))
+      violations.push(`Duplicate live card id ${card.id} in player ${seat} deck.`);
     cardIds.add(card.id);
     if (deckCardIds.has(card.deckCardId)) {
       violations.push(`Duplicate deckCardId ${card.deckCardId} in player ${seat} deck.`);
@@ -67,9 +70,12 @@ function validateInitialDeck(seat: PlayerSeat, cards: readonly CardInstance[]): 
     }
   });
 
-  if (valueCount < 3) violations.push(`Player ${seat} deck must contain at least three value cards.`);
+  if (valueCount < 3)
+    violations.push(`Player ${seat} deck must contain at least three value cards.`);
   if (cards.length >= 8 && openingValueCount < 3) {
-    violations.push(`Player ${seat} accepted opening hand must contain at least three value cards.`);
+    violations.push(
+      `Player ${seat} accepted opening hand must contain at least three value cards.`,
+    );
   }
   return violations;
 }
@@ -87,7 +93,8 @@ export function createGame(input: CreateGameInput): CaravanGameState {
   const globalIds = new Set<CardId>();
   for (const seat of PLAYER_SEATS) {
     for (const card of input.decks[seat].cards) {
-      if (globalIds.has(card.id)) violations.push(`Duplicate live card id ${card.id} across match decks.`);
+      if (globalIds.has(card.id))
+        violations.push(`Duplicate live card id ${card.id} across match decks.`);
       globalIds.add(card.id);
     }
   }
@@ -120,11 +127,7 @@ export function createGame(input: CreateGameInput): CaravanGameState {
   return state;
 }
 
-function collectLocation(
-  locations: Map<CardId, string[]>,
-  cardId: CardId,
-  location: string,
-): void {
+function collectLocation(locations: Map<CardId, string[]>, cardId: CardId, location: string): void {
   const existing = locations.get(cardId);
   if (existing === undefined) locations.set(cardId, [location]);
   else existing.push(location);
@@ -166,18 +169,22 @@ export function stateInvariantViolations(state: CaravanGameState): readonly stri
   if (!Number.isInteger(state.actionSequence) || state.actionSequence < 0) {
     violations.push('actionSequence must be a non-negative integer.');
   }
-  if (state.phase === 'FINISHED' && state.result === null) violations.push('Finished state requires a result.');
-  if (state.phase !== 'FINISHED' && state.result !== null) violations.push('Non-finished state cannot contain a result.');
+  if (state.phase === 'FINISHED' && state.result === null)
+    violations.push('Finished state requires a result.');
+  if (state.phase !== 'FINISHED' && state.result !== null)
+    violations.push('Non-finished state cannot contain a result.');
 
   for (const seat of PLAYER_SEATS) {
     const player = state.players[seat];
-    if (player.seat !== seat) violations.push(`Player state ${seat} has mismatched seat ${player.seat}.`);
+    if (player.seat !== seat)
+      violations.push(`Player state ${seat} has mismatched seat ${player.seat}.`);
 
     for (const cardId of player.drawPile) {
       collectLocation(locations, cardId, `${seat}.drawPile`);
       const card = registry[cardId];
       if (card === undefined) violations.push(`Unknown card ${cardId} in ${seat} draw pile.`);
-      else if (card.owner !== seat) violations.push(`Opponent card ${cardId} in ${seat} draw pile.`);
+      else if (card.owner !== seat)
+        violations.push(`Opponent card ${cardId} in ${seat} draw pile.`);
     }
     for (const cardId of player.hand) {
       collectLocation(locations, cardId, `${seat}.hand`);
@@ -189,16 +196,21 @@ export function stateInvariantViolations(state: CaravanGameState): readonly stri
       collectLocation(locations, cardId, `${seat}.discardPile`);
       const card = registry[cardId];
       if (card === undefined) violations.push(`Unknown card ${cardId} in ${seat} discard pile.`);
-      else if (card.owner !== seat) violations.push(`Opponent card ${cardId} in ${seat} discard pile.`);
+      else if (card.owner !== seat)
+        violations.push(`Opponent card ${cardId} in ${seat} discard pile.`);
     }
 
     for (const routeIndex of ROUTE_INDICES) {
       const route = player.routes[routeIndex];
       if (route.cards.length < 2 && route.direction !== null) {
-        violations.push(`${seat} route ${routeIndex} cannot have direction with fewer than two value cards.`);
+        violations.push(
+          `${seat} route ${routeIndex} cannot have direction with fewer than two value cards.`,
+        );
       }
       if (route.cards.length >= 2 && route.direction === null) {
-        violations.push(`${seat} route ${routeIndex} requires an effective direction with two or more value cards.`);
+        violations.push(
+          `${seat} route ${routeIndex} requires an effective direction with two or more value cards.`,
+        );
       }
       const expected = expectedDirectionForDistinctTerminalRanks(route, registry);
       if (expected !== null && route.direction !== expected) {
@@ -210,14 +222,18 @@ export function stateInvariantViolations(state: CaravanGameState): readonly stri
         const valueCard = registry[node.cardId];
         if (valueCard === undefined) violations.push(`Unknown route value card ${node.cardId}.`);
         else {
-          if (valueCard.owner !== seat) violations.push(`Route value card ${node.cardId} is not owned by route owner ${seat}.`);
-          if (!isValueRank(valueCard.face.rank)) violations.push(`Route value node ${node.cardId} is not a value card.`);
+          if (valueCard.owner !== seat)
+            violations.push(`Route value card ${node.cardId} is not owned by route owner ${seat}.`);
+          if (!isValueRank(valueCard.face.rank))
+            violations.push(`Route value node ${node.cardId} is not a value card.`);
         }
-        if (node.modifiers.length > 3) violations.push(`Value card ${node.cardId} has more than three modifiers.`);
+        if (node.modifiers.length > 3)
+          violations.push(`Value card ${node.cardId} has more than three modifiers.`);
 
         const modifierIds = new Set<CardId>();
         for (const attachment of node.modifiers) {
-          if (modifierIds.has(attachment.cardId)) violations.push(`Modifier ${attachment.cardId} is attached more than once.`);
+          if (modifierIds.has(attachment.cardId))
+            violations.push(`Modifier ${attachment.cardId} is attached more than once.`);
           modifierIds.add(attachment.cardId);
           collectLocation(locations, attachment.cardId, `${seat}.route.${routeIndex}.modifier`);
           const modifier = registry[attachment.cardId];
@@ -257,7 +273,8 @@ export function stateInvariantViolations(state: CaravanGameState): readonly stri
     }
   }
   for (const cardId of locations.keys()) {
-    if (registry[cardId] === undefined) violations.push(`Location references unknown card ${cardId}.`);
+    if (registry[cardId] === undefined)
+      violations.push(`Location references unknown card ${cardId}.`);
   }
 
   return violations;

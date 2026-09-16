@@ -75,7 +75,11 @@ function clonePlayer(player: PlayerGameState): MutablePlayerState {
     drawPile: [...player.drawPile],
     hand: [...player.hand],
     discardPile: [...player.discardPile],
-    routes: [cloneRoute(player.routes[0]), cloneRoute(player.routes[1]), cloneRoute(player.routes[2])],
+    routes: [
+      cloneRoute(player.routes[0]),
+      cloneRoute(player.routes[1]),
+      cloneRoute(player.routes[2]),
+    ],
   };
 }
 
@@ -102,11 +106,13 @@ function routeAt(state: MutableGameState, seat: PlayerSeat, route: RouteIndex): 
 }
 
 function assertRouteIndex(route: RouteIndex): void {
-  if (!ROUTE_INDICES.includes(route)) ruleError('INVALID_ROUTE', `Invalid route index ${String(route)}.`);
+  if (!ROUTE_INDICES.includes(route))
+    ruleError('INVALID_ROUTE', `Invalid route index ${String(route)}.`);
 }
 
 function assertSeat(seat: PlayerSeat): void {
-  if (!PLAYER_SEATS.includes(seat)) ruleError('INVALID_MODIFIER_TARGET', `Invalid player seat ${String(seat)}.`);
+  if (!PLAYER_SEATS.includes(seat))
+    ruleError('INVALID_MODIFIER_TARGET', `Invalid player seat ${String(seat)}.`);
 }
 
 function handCard(state: MutableGameState, actor: PlayerSeat, cardId: CardId) {
@@ -134,11 +140,7 @@ function cardIdsFromNode(node: RouteCard | MutableRouteCard): CardId[] {
   return [node.cardId, ...node.modifiers.map((attachment) => attachment.cardId)];
 }
 
-function drawReplacement(
-  state: MutableGameState,
-  actor: PlayerSeat,
-  events: GameEvent[],
-): boolean {
+function drawReplacement(state: MutableGameState, actor: PlayerSeat, events: GameEvent[]): boolean {
   const cardId = state.players[actor].drawPile.shift();
   if (cardId === undefined) return false;
   state.players[actor].hand.push(cardId);
@@ -151,7 +153,11 @@ function drawReplacement(
   return true;
 }
 
-function finish(state: MutableGameState, result: GameResult, events: GameEvent[]): TransitionResult {
+function finish(
+  state: MutableGameState,
+  result: GameResult,
+  events: GameEvent[],
+): TransitionResult {
   state.phase = 'FINISHED';
   state.result = result;
   events.push({ type: 'GAME_FINISHED', visibility: PUBLIC, result });
@@ -267,10 +273,14 @@ function playValueCard(
 ): TransitionResult {
   assertRouteIndex(action.route);
   const card = handCard(state, actor, action.cardId);
-  if (!isValueRank(card.face.rank)) ruleError('INVALID_CARD_TYPE', 'Selected card is not a value card.');
+  if (!isValueRank(card.face.rank))
+    ruleError('INVALID_CARD_TYPE', 'Selected card is not a value card.');
   const route = routeAt(state, actor, action.route);
   if (!canAppendValueCard(route, card, state.cards.byId)) {
-    ruleError('ILLEGAL_VALUE_PLAY', `Card ${action.cardId} cannot be appended to route ${action.route}.`);
+    ruleError(
+      'ILLEGAL_VALUE_PLAY',
+      `Card ${action.cardId} cannot be appended to route ${action.route}.`,
+    );
   }
 
   const direction = directionAfterAppend(route, card, state.cards.byId);
@@ -300,7 +310,10 @@ function findTargetNode(
   const route = routeAt(state, targetPlayer, routeIndex);
   const index = route.cards.findIndex((node) => node.cardId === targetCardId);
   if (index < 0) {
-    ruleError('INVALID_MODIFIER_TARGET', `Card ${targetCardId} is not a value card on the target route.`);
+    ruleError(
+      'INVALID_MODIFIER_TARGET',
+      `Card ${targetCardId} is not a value card on the target route.`,
+    );
   }
   const node = route.cards[index];
   if (node === undefined) throw new Error('Target route node disappeared during validation.');
@@ -327,7 +340,11 @@ function playJack(
   return finishOrAdvanceNormalTurn(state, actor, events, true);
 }
 
-function jokerMatches(targetCardId: CardId, candidateCardId: CardId, state: MutableGameState): boolean {
+function jokerMatches(
+  targetCardId: CardId,
+  candidateCardId: CardId,
+  state: MutableGameState,
+): boolean {
   if (candidateCardId === targetCardId) return false;
   const target = cardById(state.cards.byId, targetCardId);
   const candidate = cardById(state.cards.byId, candidateCardId);
@@ -336,11 +353,7 @@ function jokerMatches(targetCardId: CardId, candidateCardId: CardId, state: Muta
   return candidate.face.rank === target.face.rank;
 }
 
-function resolveJoker(
-  state: MutableGameState,
-  targetCardId: CardId,
-  events: GameEvent[],
-): void {
+function resolveJoker(state: MutableGameState, targetCardId: CardId, events: GameEvent[]): void {
   const contexts: Record<
     PlayerSeat,
     readonly [
@@ -401,7 +414,10 @@ function playPersistentModifier(
 ): TransitionResult {
   const target = findTargetNode(state, action.targetPlayer, action.route, action.targetCardId);
   if (rank === 'QUEEN' && target.index !== target.route.cards.length - 1) {
-    ruleError('QUEEN_REQUIRES_TERMINAL', 'Queen may only target the terminal value card of a route.');
+    ruleError(
+      'QUEEN_REQUIRES_TERMINAL',
+      'Queen may only target the terminal value card of a route.',
+    );
   }
 
   target.node.modifiers.push({ cardId: action.cardId, playedSequence: state.actionSequence });
@@ -499,8 +515,10 @@ export function applyAction(
   action: GameAction,
 ): TransitionResult {
   assertGameState(state);
-  if (state.phase === 'FINISHED') ruleError('GAME_FINISHED', 'Cannot act after the game has finished.');
-  if (actor !== state.activePlayer) ruleError('NOT_ACTIVE_PLAYER', `Player ${actor} is not the active player.`);
+  if (state.phase === 'FINISHED')
+    ruleError('GAME_FINISHED', 'Cannot act after the game has finished.');
+  if (actor !== state.activePlayer)
+    ruleError('NOT_ACTIVE_PLAYER', `Player ${actor} is not the active player.`);
 
   const next = cloneState(state);
   const events: GameEvent[] = [];
@@ -528,7 +546,11 @@ function actionEquals(left: GameAction, right: GameAction): boolean {
   if (left.type !== right.type) return false;
   switch (left.type) {
     case 'PLAY_VALUE_CARD':
-      return right.type === 'PLAY_VALUE_CARD' && left.cardId === right.cardId && left.route === right.route;
+      return (
+        right.type === 'PLAY_VALUE_CARD' &&
+        left.cardId === right.cardId &&
+        left.route === right.route
+      );
     case 'PLAY_MODIFIER_CARD':
       return (
         right.type === 'PLAY_MODIFIER_CARD' &&

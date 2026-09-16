@@ -5,7 +5,16 @@ import { face, makeDeck, makeGame } from './fixtures.js';
 describe('game initialization and opening', () => {
   it('deals eight cards without mutating injected order and exposes only opening placements', () => {
     const state = makeGame(
-      [face(3), face(4), face(5), face('KING'), face('QUEEN'), face('JACK'), face('JOKER'), face(9)],
+      [
+        face(3),
+        face(4),
+        face(5),
+        face('KING'),
+        face('QUEEN'),
+        face('JACK'),
+        face('JOKER'),
+        face(9),
+      ],
       [face(6), face(7), face(8), face(2), face(3), face(4), face(5), face(9)],
     );
 
@@ -20,8 +29,14 @@ describe('game initialization and opening', () => {
 
   it('rejects an accepted opening order without three value cards', () => {
     const deckA = makeDeck('A', [
-      face('KING'), face('QUEEN'), face('JACK'), face('JOKER'),
-      face('KING'), face('QUEEN'), face(2), face(3),
+      face('KING'),
+      face('QUEEN'),
+      face('JACK'),
+      face('JOKER'),
+      face('KING'),
+      face('QUEEN'),
+      face(2),
+      face(3),
     ]);
     const deckB = makeDeck('B');
     expect(() => createGame({ startingPlayer: 'A', decks: { A: deckA, B: deckB } })).toThrowError(

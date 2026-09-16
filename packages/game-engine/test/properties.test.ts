@@ -10,12 +10,24 @@ import {
 import { face, makeGame } from './fixtures.js';
 
 const propertyDeckA = [
-  face(2, 'CLUBS'), face(3, 'DIAMONDS'), face(4, 'HEARTS'), face(5, 'SPADES'),
-  face('KING', 'CLUBS'), face('QUEEN', 'DIAMONDS'), face('JACK', 'HEARTS'), face('JOKER'),
+  face(2, 'CLUBS'),
+  face(3, 'DIAMONDS'),
+  face(4, 'HEARTS'),
+  face(5, 'SPADES'),
+  face('KING', 'CLUBS'),
+  face('QUEEN', 'DIAMONDS'),
+  face('JACK', 'HEARTS'),
+  face('JOKER'),
 ];
 const propertyDeckB = [
-  face(6, 'CLUBS'), face(7, 'DIAMONDS'), face(8, 'HEARTS'), face(9, 'SPADES'),
-  face('KING', 'HEARTS'), face('QUEEN', 'SPADES'), face('JACK', 'CLUBS'), face('JOKER'),
+  face(6, 'CLUBS'),
+  face(7, 'DIAMONDS'),
+  face(8, 'HEARTS'),
+  face(9, 'SPADES'),
+  face('KING', 'HEARTS'),
+  face('QUEEN', 'SPADES'),
+  face('JACK', 'CLUBS'),
+  face('JOKER'),
 ];
 
 describe('engine properties', () => {

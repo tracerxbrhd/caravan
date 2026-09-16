@@ -21,13 +21,26 @@ describe('results and hidden-information projection', () => {
   it('never exposes opponent hand identities or either future draw order', () => {
     const state = completeOpening(
       makeGame(
-        [face(3), face(4), face(5), face('KING'), face('QUEEN'), face('JACK'), face('JOKER'), face(9)],
+        [
+          face(3),
+          face(4),
+          face(5),
+          face('KING'),
+          face('QUEEN'),
+          face('JACK'),
+          face('JOKER'),
+          face(9),
+        ],
         [face(6), face(7), face(8), face(2), face(3), face(4), face(5), face(9)],
       ),
     );
     const viewA = projectForPlayer(state, 'A');
     const serialized = JSON.stringify(viewA);
-    for (const hiddenId of [...state.players.B.hand, ...state.players.A.drawPile, ...state.players.B.drawPile]) {
+    for (const hiddenId of [
+      ...state.players.B.hand,
+      ...state.players.A.drawPile,
+      ...state.players.B.drawPile,
+    ]) {
       expect(serialized).not.toContain(`\"${hiddenId}\"`);
     }
     for (const ownHandId of state.players.A.hand) expect(serialized).toContain(`\"${ownHandId}\"`);
@@ -50,9 +63,15 @@ describe('normal route victory', () => {
     return completeOpening(
       makeGame(
         [
-          face(10, 'CLUBS'), face(10, 'DIAMONDS'), face(10, 'HEARTS'),
-          face('KING', 'SPADES'), face('ACE', 'CLUBS'), face('KING', 'HEARTS'),
-          face('ACE', 'DIAMONDS'), face('KING', 'CLUBS'), face('ACE', 'SPADES'),
+          face(10, 'CLUBS'),
+          face(10, 'DIAMONDS'),
+          face(10, 'HEARTS'),
+          face('KING', 'SPADES'),
+          face('ACE', 'CLUBS'),
+          face('KING', 'HEARTS'),
+          face('ACE', 'DIAMONDS'),
+          face('KING', 'CLUBS'),
+          face('ACE', 'SPADES'),
         ],
         [face(2), face(3), face(4), face(5), face(6), face(7), face(8), face(9)],
       ),
@@ -67,19 +86,31 @@ describe('normal route victory', () => {
   function advanceToFinalWinningCard(): CaravanGameState {
     let state = winningSetup();
     state = applyAction(state, 'A', {
-      type: 'PLAY_MODIFIER_CARD', cardId: 'A-3', targetPlayer: 'A', route: 0, targetCardId: 'A-0',
+      type: 'PLAY_MODIFIER_CARD',
+      cardId: 'A-3',
+      targetPlayer: 'A',
+      route: 0,
+      targetCardId: 'A-0',
     }).state;
     state = passB(state);
     state = applyAction(state, 'A', { type: 'PLAY_VALUE_CARD', cardId: 'A-4', route: 0 }).state;
     state = passB(state);
     state = applyAction(state, 'A', {
-      type: 'PLAY_MODIFIER_CARD', cardId: 'A-5', targetPlayer: 'A', route: 1, targetCardId: 'A-1',
+      type: 'PLAY_MODIFIER_CARD',
+      cardId: 'A-5',
+      targetPlayer: 'A',
+      route: 1,
+      targetCardId: 'A-1',
     }).state;
     state = passB(state);
     state = applyAction(state, 'A', { type: 'PLAY_VALUE_CARD', cardId: 'A-6', route: 1 }).state;
     state = passB(state);
     state = applyAction(state, 'A', {
-      type: 'PLAY_MODIFIER_CARD', cardId: 'A-7', targetPlayer: 'A', route: 2, targetCardId: 'A-2',
+      type: 'PLAY_MODIFIER_CARD',
+      cardId: 'A-7',
+      targetPlayer: 'A',
+      route: 2,
+      targetCardId: 'A-2',
     }).state;
     state = passB(state);
     return state;

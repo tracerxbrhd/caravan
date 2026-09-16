@@ -22,15 +22,13 @@ export function makeDeck(seat: PlayerSeat, firstFaces: readonly CardFace[] = [])
     faces.push(face(FILLER_RANKS[faces.length % FILLER_RANKS.length]!, SUITS[faces.length % 4]!));
   }
   return {
-    cards: faces.map(
-      (cardFace, index): CardInstance => ({
-        id: `${seat}-${index}`,
-        owner: seat,
-        deckCardId: `${seat}-deck-${index}`,
-        sourceSetId: 'standard-test-set',
-        face: cardFace,
-      }),
-    ),
+    cards: faces.map((cardFace, index): CardInstance => ({
+      id: `${seat}-${index}`,
+      owner: seat,
+      deckCardId: `${seat}-deck-${index}`,
+      sourceSetId: 'standard-test-set',
+      face: cardFace,
+    })),
   };
 }
 
