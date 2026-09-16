@@ -147,14 +147,17 @@ These protections are intentionally small and process-local; they do not justify
 
 ## Graceful shutdown
 
-On Fastify shutdown the runtime:
+The realtime module owns `@fastify/websocket` registration so it can also own the plugin's custom `preClose` behavior. Upgraded WebSocket connections must be closed before Fastify reaches normal `onClose` processing; treating this as an ordinary late cleanup would allow service restart sockets to look like player disconnects.
 
-- marks itself as shutting down;
+During realtime `preClose` the runtime:
+
+- marks itself as shutting down before any socket close event can persist a disconnect;
 - stops heartbeat/deadline intervals;
 - clears process-local control ownership;
-- closes sockets with the service-restart close code.
+- closes sockets with `1012 / SERVICE_RESTART`;
+- closes the WebSocket server before Fastify completes shutdown.
 
-Shutdown socket closures do not persist ordinary player-disconnect penalties. The next process performs authoritative restart recovery instead.
+Shutdown socket closures do not persist ordinary player-disconnect penalties. The durable match keeps its pre-shutdown connection/deadline state, and the next process performs authoritative restart recovery from that state instead.
 
 ## Testing baseline
 
@@ -171,6 +174,7 @@ Automated coverage protects at minimum:
 - controlling-socket takeover and stale-socket rejection;
 - state-changing command persistence before peer broadcast;
 - viewer-specific hidden-information isolation over the real WebSocket transport;
+- graceful service restart closing sockets without persisting player-disconnect penalties;
 - final surrender state persisted to PostgreSQL;
 - configuration defaults for turn and reconnect timing.
 
