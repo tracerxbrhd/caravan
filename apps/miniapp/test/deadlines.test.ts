@@ -78,8 +78,8 @@ describe('match deadline presentation', () => {
     ]);
   });
 
-  it('uses a server clock anchor instead of trusting the device wall clock', () => {
-    const anchor = { serverTimeMs: 50_000, clientTimeMs: 1_000_000 };
+  it('uses a server clock anchor plus monotonic client elapsed time', () => {
+    const anchor = { serverTimeMs: 50_000, clientMonotonicMs: 1_000_000 };
     expect(estimatedServerNow(anchor, 1_005_500)).toBe(55_500);
     expect(remainingDeadlineSeconds(60_001, 55_500)).toBe(5);
     expect(remainingDeadlineSeconds(55_000, 55_500)).toBe(0);
