@@ -1,5 +1,7 @@
 import { buildChallengeLaunchParam, type InviteToken } from '@caravan/protocol';
 
+export type HapticCue = 'SELECTION' | 'LIGHT' | 'MEDIUM' | 'SUCCESS' | 'ERROR';
+
 declare global {
   interface Window {
     Telegram?: {
@@ -9,6 +11,11 @@ declare global {
         ready(): void;
         expand(): void;
         openTelegramLink?(url: string): void;
+        HapticFeedback?: {
+          impactOccurred(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void;
+          notificationOccurred(type: 'error' | 'success' | 'warning'): void;
+          selectionChanged(): void;
+        };
       };
     };
   }
@@ -22,6 +29,8 @@ export interface PlatformAdapter {
   challengeInviteUrl(inviteToken: InviteToken): string | null;
   shareUrl(url: string, text: string): void;
   copyText(text: string): Promise<boolean>;
+  hapticsAvailable(): boolean;
+  haptic(cue: HapticCue): void;
 }
 
 const BOT_USERNAME_PATTERN = /^[A-Za-z0-9_]{5,32}$/;
@@ -36,6 +45,23 @@ function telegramLaunchParam(): string | undefined {
   if (direct !== undefined && direct.length > 0) return direct;
   const query = new URLSearchParams(window.location.search).get('tgWebAppStartParam');
   return query ?? undefined;
+}
+
+function browserVibrationAvailable(): boolean {
+  return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+}
+
+function browserVibration(cue: HapticCue): void {
+  if (!browserVibrationAvailable()) return;
+  const pattern =
+    cue === 'SUCCESS'
+      ? [12, 35, 20]
+      : cue === 'ERROR'
+        ? [25, 30, 25]
+        : cue === 'MEDIUM'
+          ? 18
+          : 8;
+  navigator.vibrate(pattern);
 }
 
 export const platform: PlatformAdapter = {
@@ -62,5 +88,19 @@ export const platform: PlatformAdapter = {
     } catch {
       return false;
     }
+  },
+  hapticsAvailable: () =>
+    window.Telegram?.WebApp.HapticFeedback !== undefined || browserVibrationAvailable(),
+  haptic: (cue) => {
+    const haptics = window.Telegram?.WebApp.HapticFeedback;
+    if (haptics === undefined) {
+      browserVibration(cue);
+      return;
+    }
+
+    if (cue === 'SELECTION') haptics.selectionChanged();
+    else if (cue === 'SUCCESS') haptics.notificationOccurred('success');
+    else if (cue === 'ERROR') haptics.notificationOccurred('error');
+    else haptics.impactOccurred(cue === 'MEDIUM' ? 'medium' : 'light');
   },
 };
