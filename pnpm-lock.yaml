@@ -212,7 +212,14 @@ importers:
         specifier: 8.3.0
         version: 8.3.0(@types/node@24.13.4)
 
-  apps/server: {}
+  apps/server:
+    dependencies:
+      '@caravan/game-engine':
+        specifier: workspace:*
+        version: link:../../packages/game-engine
+      '@caravan/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
 
   packages/game-engine: {}
 
