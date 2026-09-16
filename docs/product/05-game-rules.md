@@ -26,7 +26,7 @@ The terms `route`, `value card`, and `modifier card` are CARAVAN project termino
 
 ## Decks
 
-A legal match deck contains at least 30 card instances.
+A legal match deck contains at least 30 card instances and at least three value cards so opening setup is possible.
 
 A card instance has a stable identity in addition to rank and suit. Multiple copies of the same rank/suit may exist when they are distinct instances from different allowed source sets, but the same physical/logical card instance cannot appear twice in one deck.
 
@@ -41,6 +41,18 @@ The authoritative server shuffles each player's deck independently and provides 
 Each player begins with 8 cards in hand.
 
 An opening hand must contain at least three value cards. If a shuffled opening hand does not satisfy that requirement, the server performs a fresh shuffle/mulligan for that player and draws a new opening hand. This is CARAVAN's explicit deadlock-prevention rule; the historical source-game bug that permitted discarding during setup is not reproduced.
+
+Only the accepted final opening hand/order enters gameplay. Mulligan attempts do not reveal rejected hands to the opponent.
+
+## Starting player and turn order
+
+The authoritative server chooses a starting seat uniformly for each match using secure server randomness and injects that choice into game initialization. The deterministic engine does not choose the starter itself.
+
+The starting player takes the first opening turn. Players then alternate turns strictly unless the match has already finished.
+
+Because the opening phase consists of six alternating turns total (three per player), the same starting player also takes the first normal turn after both players have seeded all three routes.
+
+A turn changes only after the acting player's action, all resulting card effects, any required replacement draw, and victory/deck-exhaustion evaluation have fully resolved.
 
 ## Opening phase
 
@@ -119,6 +131,22 @@ At most three modifier cards may be attached to one value card at a time. A modi
 
 A Jack resolves immediately and is discarded together with the card group it removes. Kings, Queens, and Jokers remain attached to their target after resolving their effect.
 
+## Card ownership and discard destination
+
+Every card instance keeps the owner of the deck it came from for the entire match, even when that card is played as a modifier onto an opponent's route.
+
+Whenever a card leaves play, it enters its original owner's discard pile. This applies to:
+
+- a card discarded directly from hand;
+- a Jack after resolving;
+- a Jack's target and attached modifiers;
+- cards and modifiers removed by a Joker;
+- every card removed when a route is disbanded.
+
+As a result, disbanding a route can send attached opponent-owned modifiers to the opponent's discard pile while the route owner's cards return to the route owner's discard pile.
+
+Discard piles are public information. A card discarded directly from a hidden hand becomes public when discarded.
+
 ## Jack
 
 A Jack may target any value card with an available modifier slot.
@@ -129,7 +157,7 @@ It removes:
 - every modifier currently attached to that target;
 - the Jack used for the removal.
 
-All removed cards go to the owning player's discard state as appropriate.
+All removed cards go to their original owners' discard piles.
 
 The remaining value cards close the gap while retaining their relative order.
 
@@ -170,9 +198,9 @@ A Joker resolves once when played and then remains attached to its target. It do
 
 ### Joker on Ace
 
-Remove every other value card currently on the table whose suit matches the targeted Ace's suit.
+Remove every other value card currently on the table whose printed suit matches the targeted Ace's printed suit.
 
-The targeted Ace remains.
+The targeted Ace remains. Queen suit overrides do not change a value card's printed suit for Joker resolution.
 
 ### Joker on 2 through 10
 
@@ -232,19 +260,19 @@ CARAVAN uses a finite deck; discard piles are not reshuffled during a normal mat
 
 When a play/discard action requires its replacement draw but the acting player's draw pile is empty, resolve the played action first and evaluate normal victory. If that action has not already ended the match in the acting player's favor, that player loses by deck exhaustion.
 
-This rule gives deck size and discard decisions strategic cost while preventing indefinite recycle loops.
+This is CARAVAN's explicit deterministic interpretation of source-game exhaustion behavior. It makes the inability to complete a required replacement draw the rule boundary rather than allowing implementation-dependent play after the draw pile is exhausted.
 
 ## Discarding from hand
 
 A player may use their normal-turn action to discard one card from hand.
 
-That card leaves the hand and enters discard state, then the player draws one replacement card if available. Normal deck-exhaustion handling applies if a replacement cannot be drawn.
+That card leaves the hand, becomes public in its owner's discard pile, then the player draws one replacement card if available. Normal deck-exhaustion handling applies if a replacement cannot be drawn.
 
 ## Disbanding a route
 
 A player may use their normal-turn action to remove every card from one of their own routes, including attached modifiers.
 
-Those cards enter discard state. The route becomes empty and may later be restarted with a value card.
+Each removed card enters its original owner's discard pile. The route becomes empty and may later be restarted with a value card.
 
 Disbanding does not draw a card because it does not consume a card from hand.
 
@@ -267,7 +295,14 @@ This explicit rule exists so removal edge cases are deterministic and testable r
 
 The rules assume hidden hands and hidden future deck order.
 
-Table cards, route values/status, number of cards in each hand, remaining deck counts, and cards that have become public through play/removal are public match information.
+Public match information includes:
+
+- all cards and modifiers currently on the table;
+- route values, statuses, and current lane ownership;
+- each player's hand size and remaining deck count;
+- both discard piles and the identities/order of cards placed into them;
+- any card revealed by a public action such as discard or removal;
+- active player, phase, and final result.
 
 The authoritative server may know more than either player is allowed to receive. Projection requirements are defined in the architecture docs.
 
