@@ -1,48 +1,37 @@
 # CARAVAN
 
-**A competitive online card game about building routes, disrupting rivals, and mastering the table.**
+CARAVAN is a competitive online card game built around Caravan gameplay principles with an original identity, original assets, and an independent implementation.
 
-CARAVAN is an independent multiplayer card game inspired by the underlying gameplay principles of Caravan. It is being built around quick matches, clear rules, strong competitive integrity, and the tactile feel of playing real cards.
+The first release target is a Telegram Mini App: a low-friction way to learn the game, challenge friends, and play real matches without installing a separate client. CARAVAN is being designed from the start so the same game can later expand to Android, iOS, and the web.
 
-The first release is planned as a **Telegram Mini App**, making it easy to jump from a chat or challenge straight into a match. CARAVAN is also being designed with standalone **Android, iOS, and web** clients in mind.
+> **Status:** pre-development. Product, rules, UX, and architecture foundations are being defined before implementation begins.
 
-> **Current status:** pre-alpha / foundation stage. Gameplay implementation has not started yet.
+## What CARAVAN aims to be
 
-## The game we want to build
+- **Easy to enter.** Open it from Telegram and get into a match quickly.
+- **Actually learnable.** A short interactive tutorial should teach the game through play instead of dropping a wall of rules on the player.
+- **Competitive and fair.** Multiplayer outcomes are determined by the game, not by paid advantages.
+- **Tactile.** Cards should deal, lift, slide, attach, and discard with the weight and clarity of a real card table.
+- **Reliable online.** Disconnects should not casually destroy a match.
+- **Its own thing.** The visual world is built around worn cards, trade routes, paper, wood, metal, dust, stamps, and merchant motifs rather than another franchise's presentation.
+- **Built to travel.** Telegram is the first stop, not the final platform.
 
-CARAVAN should feel immediate and physical rather than like a web form with cards on it.
+## The feel
 
-Expect a table built around:
+CARAVAN should not feel like a web form where rectangular buttons happen to look like cards.
 
-- short head-to-head matches;
-- three competing routes on each side of the table;
-- meaningful card placement and disruption;
-- a guided interactive tutorial that teaches by playing;
-- smooth dealing, drawing, placement, attachment, and discard animations;
-- subtle sound and haptic feedback;
-- casual matches, private challenges, and competitive play as the project grows.
+The table should make actions understandable through movement and placement: cards arrive into the hand, legal targets become clear, modifiers physically attach to their targets, removed cards leave the table visibly, and route values react immediately to what happened.
 
-The visual direction is its own: **weathered cards, trade routes, paper, wood, metal, dust, stamps, and merchant motifs**. The goal is a recognizable CARAVAN identity rather than an imitation of another game's presentation.
+Sound and haptics should stay subtle and supportive, with reduced-motion and sound preferences respected.
 
-## Start in Telegram. Grow beyond it.
+## Platforms
 
-Telegram is the launch platform because it makes trying the game and challenging another person almost frictionless.
+The initial target is **Telegram Mini Apps**.
 
-The longer-term goal is one CARAVAN experience across:
-
-- Telegram Mini App;
-- Android;
-- iOS;
-- web.
-
-Progression or cosmetics may grow around the core game later, but competitive gameplay must remain fair and never become pay-to-win.
+Standalone **Android**, **iOS**, and browser clients are planned directions once the core game has been validated with real players. Telegram-specific behavior should remain a launch/integration layer rather than defining the game itself.
 
 ## Independent project
 
-CARAVAN is an original, independently implemented project. It is **not official, licensed, endorsed, or affiliated with Bethesda, Fallout, or Fallout: New Vegas**.
+CARAVAN is an independent project and is not official, licensed, endorsed, or affiliated with Bethesda Softworks, Fallout, or Fallout: New Vegas.
 
-The project does not use franchise assets, characters, factions, logos, dialogue, music, sound effects, extracted files, copied UI, source code, or copied rulebook text.
-
----
-
-**CARAVAN** is currently in its earliest development stage. The repository will evolve as the playable game takes shape.
+The project does not use extracted game assets, franchise characters or factions, logos, dialogue, music, sound effects, copied UI, source code, or copied rulebook text. Gameplay concepts are independently specified and implemented with original wording, art, audio, interface, and branding.
