@@ -1,12 +1,12 @@
 # Development
 
-CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, typed/runtime-validated `packages/protocol` contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, authenticated Fastify HTTP runtime, and authenticated WebSocket realtime runtime in `apps/server`. Telegram `initData` authentication, provider-independent accounts, PostgreSQL-backed application sessions, reconnect/deadline lifecycle, and the Mini App authentication bootstrap are implemented. Bot runtime, matchmaking/challenges, client match UI/realtime transport, and production application deployment remain intentionally unimplemented unless later documentation says otherwise.
+CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, typed/runtime-validated `packages/protocol` contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, authenticated Fastify HTTP runtime, authenticated WebSocket realtime runtime, and durable match-entry runtime in `apps/server`. Telegram `initData` authentication, provider-independent accounts, PostgreSQL-backed application sessions, casual matchmaking, private challenges, reconnect/deadline lifecycle, and the Mini App authentication bootstrap are implemented. Bot runtime, client Play/match UI/realtime transport, and production application deployment remain intentionally unimplemented unless later documentation says otherwise.
 
 ## Before implementation work
 
 Read the documentation map in [`../README.md`](../README.md), then at minimum read the contracts relevant to the task.
 
-For gameplay, server, protocol, persistence, authentication, realtime, or match-client implementation, the required baseline is:
+For gameplay, server, protocol, persistence, authentication, realtime, match-entry, or match-client implementation, the required baseline is:
 
 1. [`../product/01-product-foundation.md`](../product/01-product-foundation.md)
 2. [`../product/02-player-experience-and-platform-strategy.md`](../product/02-player-experience-and-platform-strategy.md)
@@ -23,6 +23,7 @@ For gameplay, server, protocol, persistence, authentication, realtime, or match-
 13. [`../architecture/07-durable-match-persistence.md`](../architecture/07-durable-match-persistence.md)
 14. [`../architecture/08-authenticated-server-runtime.md`](../architecture/08-authenticated-server-runtime.md)
 15. [`../architecture/09-authenticated-realtime-runtime.md`](../architecture/09-authenticated-realtime-runtime.md)
+16. [`../architecture/10-match-entry.md`](../architecture/10-match-entry.md)
 
 `product/04-market-and-competitive-context.md` is useful product context but is not an implementation contract.
 
@@ -54,26 +55,26 @@ Dependency upgrades should be deliberate and verified rather than mixed into unr
 apps/
   miniapp/       React/Vite shell + platform/auth bootstrap
   bot/           Telegram bot application boundary
-  server/        authenticated HTTP/WS runtime + authoritative match service + PostgreSQL persistence
+  server/        authenticated HTTP/WS runtime + match entry + authoritative match service + PostgreSQL persistence
 
 packages/
   game-engine/   implemented deterministic CARAVAN rules engine
-  protocol/      implemented client/server gameplay wire contracts
+  protocol/      implemented client/server gameplay and match-entry contracts
 ```
 
 `packages/game-engine` owns the canonical deterministic card-rule behavior. It exposes initialization from server-supplied deck order/starting seat, legal actions, state transitions, route/lane evaluation, invariant checking, rule-domain events, and player-safe projections.
 
-`packages/protocol` owns strict versioned wire schemas for gameplay/surrender/resync commands, sanitized `PlayerView` snapshots, match lifecycle results, protocol errors, and stable rejection payloads. It deliberately exposes no wire schema for privileged `CaravanGameState`.
+`packages/protocol` owns strict versioned wire schemas for gameplay/surrender/resync commands, sanitized `PlayerView` snapshots, match lifecycle results, protocol errors, stable rejection payloads, and match-entry response/request shapes. It deliberately exposes no wire schema for privileged `CaravanGameState`.
 
-`apps/server` owns equal starter-deck construction, crypto-backed Fisher-Yates/mulligan and starting-seat selection, match ownership, `stateVersion`, processed command identity, stale/duplicate rejection, CAS concurrency, game-engine execution, surrender/timeout/no-contest finalization, per-player protocol snapshots, versioned authoritative persistence, migrations, PostgreSQL-backed restart recovery, Fastify HTTP/WS runtime, Telegram `initData` verification, internal account identity, application sessions, controlling socket ownership, heartbeat, reconnect grace, and turn deadlines.
+`apps/server` owns equal starter-deck construction, crypto-backed Fisher-Yates/mulligan and starting-seat selection, match ownership, `stateVersion`, processed command identity, stale/duplicate rejection, CAS concurrency, game-engine execution, surrender/timeout/no-contest finalization, per-player protocol snapshots, versioned authoritative persistence, migrations, PostgreSQL-backed restart recovery, Fastify HTTP/WS runtime, Telegram `initData` verification, internal account identity, application sessions, durable casual matchmaking, private challenge lifecycle, controlling socket ownership, heartbeat, reconnect grace, and turn deadlines.
 
-`InMemoryMatchStore` remains useful for focused unit/service tests. `PostgresMatchStore` is the durable adapter and must preserve the same compare-and-set/idempotency contract. Raw authoritative snapshots contain hidden information and must never become client payloads.
+`InMemoryMatchStore` remains useful for focused unit/service tests. `PostgresMatchStore` is the durable adapter and must preserve the same compare-and-set/idempotency contract. It may also be bound to a PostgreSQL transaction when a surrounding server operation such as match entry must atomically create a match together with its own durable transition. Raw authoritative snapshots contain hidden information and must never become client payloads.
 
-Telegram user IDs are external identity subjects only. Gameplay ownership uses internal CARAVAN account UUIDs. Raw Telegram `initData`, session tokens, cookies, and authorization material must never be logged or stored as ordinary application data.
+Telegram user IDs are external identity subjects only. Gameplay and match-entry ownership use internal CARAVAN account UUIDs. Raw Telegram `initData`, session tokens, cookies, invite tokens, and authorization material must never be logged or stored as ordinary application data. Private invite tokens are stored only by SHA-256 hash.
 
-`bot` remains scaffold-only. `server` now exposes `/ws` for authenticated gameplay realtime but does not yet perform matchmaking/private challenges. The Mini App does not yet contain the production match WebSocket client/UI.
+`bot` remains scaffold-only. `server` now exposes authenticated HTTP match-entry routes and `/ws` for authenticated gameplay realtime. The Mini App does not yet contain the production Play/matchmaking flow or match WebSocket client/UI.
 
-The engine does not generate live randomness and does not own surrender, timeout, reconnect, persistence, authentication, WebSocket broadcasting, or server command idempotency/state-version semantics. The protocol describes gameplay wire boundaries; the server service, persistence adapters, and runtime implement authoritative command/state/storage/authentication/realtime semantics.
+The engine does not generate live randomness and does not own surrender, timeout, reconnect, persistence, authentication, matchmaking, private challenges, WebSocket broadcasting, or server command idempotency/state-version semantics. The protocol describes gameplay and match-entry wire boundaries; the server service, persistence adapters, and runtime implement authoritative command/state/storage/authentication/realtime/match-entry semantics.
 
 ## Setup
 
@@ -92,11 +93,13 @@ cp .env.example .env
 docker compose up -d db
 ```
 
-Set a real Telegram bot token in `.env` when exercising Telegram authentication. Realtime defaults are also configurable there:
+Set a real Telegram bot token in `.env` when exercising Telegram authentication. Realtime and match-entry defaults are also configurable there:
 
 ```text
 TURN_TIMEOUT_SECONDS=60
 RECONNECT_GRACE_SECONDS=30
+MATCHMAKING_LEASE_SECONDS=90
+CHALLENGE_TTL_SECONDS=900
 ```
 
 Export/load the environment, then build the workspace and apply committed migrations:
@@ -119,19 +122,30 @@ pnpm start:server
 The server defaults to `0.0.0.0:3000` and exposes:
 
 ```text
-GET  /health
-GET  /ready
-POST /api/auth/telegram
-GET  /api/me
-POST /api/logout
-GET  /ws   (WebSocket upgrade)
+GET    /health
+GET    /ready
+POST   /api/auth/telegram
+GET    /api/me
+POST   /api/logout
+GET    /api/matchmaking
+POST   /api/matchmaking/join
+POST   /api/matchmaking/heartbeat
+DELETE /api/matchmaking
+POST   /api/challenges
+GET    /api/challenges/:challengeId
+POST   /api/challenges/accept
+POST   /api/challenges/decline
+POST   /api/challenges/:challengeId/cancel
+GET    /ws   (WebSocket upgrade)
 ```
+
+Match-entry HTTP endpoints require the same `caravan_session` cookie as `/api/me`. Casual matchmaking uses a bounded durable queue lease. Creating a private challenge leaves casual matchmaking and returns a high-entropy invite token once; joining casual matchmaking cancels the account's pending outgoing challenge. Challenge acceptance and casual pairing both create gameplay state only through the existing authoritative `MatchService`.
 
 The WebSocket endpoint requires the existing `caravan_session` cookie and the configured `PUBLIC_ORIGIN`. Gameplay identity is resolved from that session; clients do not send Telegram IDs or replacement account identity in realtime commands.
 
 A match participant uses `RESYNC` to establish/take over control for a match and receive a fresh sanitized snapshot. State-changing commands are accepted only from the controlling socket. Before the match has started — while no authoritative turn deadline exists because both players have not connected yet — the realtime boundary returns `MATCH_NOT_READY` rather than allowing early play. Once the match has started, a later opponent disconnect does not freeze the connected active player; reconnect grace is enforced independently by the server.
 
-In local development the current Vite shell proxies `/api` to `127.0.0.1:3000`; client-side `/ws` integration belongs to the upcoming match client layer.
+In local development the current Vite shell proxies `/api` to `127.0.0.1:3000`; client-side Play and `/ws` integration belong to the upcoming client layer.
 
 Production requires an HTTPS `PUBLIC_ORIGIN`. Production requests are checked against the configured public Host, mutations remain same-origin, and `/ws` validates the Origin during upgrade.
 
@@ -162,7 +176,7 @@ pnpm verify
 
 PostgreSQL integration tests run when `DATABASE_URL` is available. CI additionally sets `CARAVAN_REQUIRE_DATABASE_TESTS=1`, so database coverage cannot silently skip there. CI test files run serially because multiple database integration suites intentionally truncate the same isolated test database between cases; this prevents cross-file test races without changing normal application concurrency behavior.
 
-The game engine, protocol, authoritative match service, durable match store, Telegram verifier, server configuration, authenticated HTTP runtime, realtime lifecycle, and actual WebSocket transport have substantive automated tests. Vitest still permits zero tests globally only because remaining scaffold-only apps do not yet have behavior worth testing. Do not add meaningless placeholder tests merely to increase a count.
+The game engine, protocol, authoritative match service, durable match store, Telegram verifier, server configuration, authenticated HTTP runtime, match-entry lifecycle, realtime lifecycle, and actual WebSocket transport have substantive automated tests. Vitest still permits zero tests globally only because remaining scaffold-only apps do not yet have behavior worth testing. Do not add meaningless placeholder tests merely to increase a count.
 
 ## Game-engine testing baseline
 
@@ -180,7 +194,7 @@ Rule changes should update `docs/product/05-game-rules.md` and tests in the same
 
 ## Protocol testing baseline
 
-Changes to client/server gameplay contracts should add or update tests in `packages/protocol/test/` and, where transport behavior is affected, `apps/server/test/`.
+Changes to client/server gameplay or match-entry contracts should add or update tests in `packages/protocol/test/` and, where runtime behavior is affected, `apps/server/test/`.
 
 Tests protect:
 
@@ -191,11 +205,13 @@ Tests protect:
 - opponent hand and future deck data being rejected as unknown wire fields;
 - server match lifecycle results remaining separate from pure rule-engine outcomes;
 - stable engine rule error codes remaining synchronized with rejection payloads;
-- WebSocket malformed/unsupported-version input failing through stable protocol errors.
+- WebSocket malformed/unsupported-version input failing through stable protocol errors;
+- match-entry responses remaining strict and free of privileged authoritative state;
+- invite-token syntax remaining explicit and runtime validated.
 
-## Match-service, persistence, and realtime testing baseline
+## Match-service, persistence, match-entry, and realtime testing baseline
 
-Changes to authoritative match semantics, persistence, or realtime lifecycle should add or update tests in `apps/server/test/`.
+Changes to authoritative match semantics, persistence, match entry, or realtime lifecycle should add or update tests in `apps/server/test/`.
 
 Server tests protect:
 
@@ -213,6 +229,13 @@ Server tests protect:
 - atomic PostgreSQL same-version CAS races;
 - accepted-command/idempotency recovery after pool/service recreation;
 - persistence metadata divergence failing closed;
+- durable casual queue lease behavior and FIFO pairing;
+- simultaneous queue joins producing one pairing rather than stranded duplicates;
+- private challenge retry idempotency and single-winner acceptance races;
+- private invite tokens being hashed at rest and absent from match state;
+- queue/challenge mode switching and casual-vs-private concurrency producing at most one active match;
+- challenge expiry becoming durable rather than remaining an indefinitely pending row;
+- authenticated match-entry HTTP routes using the existing application-session boundary;
 - durable connect/disconnect/reconnect transitions;
 - turn/reconnect deadline expiration and idempotent finalization;
 - restart recovery of process-local connection state;
@@ -238,6 +261,7 @@ Authentication or HTTP/runtime changes should protect:
 - disabled-account rejection;
 - liveness and database readiness behavior;
 - secret values remaining outside ordinary logs/error responses;
+- match-entry endpoints resolving internal account identity from the same session cookie;
 - WebSocket authentication reusing the same application session/account boundary;
 - session revocation/disablement not leaving an already-open socket permanently authorized.
 
@@ -255,7 +279,7 @@ Authentication or HTTP/runtime changes should protect:
 - keep hidden-information security testable and explicit;
 - keep Telegram identity separate from internal account ownership;
 - never trust `initDataUnsafe` or client-supplied Telegram identity data;
-- never persist or log raw `initData` or raw session tokens;
+- never persist or log raw `initData`, raw session tokens, or raw private invite tokens;
 - keep card ownership stable and explicit when modifiers cross player routes;
 - do not duplicate rules between server, protocol, persistence, transport, and UI;
 - keep surrender/timeout/reconnect lifecycle out of the pure card-rule action model;
@@ -265,6 +289,7 @@ Authentication or HTTP/runtime changes should protect:
 - treat socket ownership as process-local control, not durable gameplay identity;
 - preserve absolute server deadlines in durable match state;
 - validate persisted snapshots on both write and restore;
+- serialize match-entry races at the server/database boundary rather than trusting client UI state;
 - use committed migrations rather than ad-hoc production schema changes;
 - do not introduce infrastructure for hypothetical scale;
 - never make the client authoritative merely to simplify a UI prototype.
