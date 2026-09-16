@@ -4,7 +4,7 @@
 
 Accepted as the initial architecture direction. The repository scaffold implements the agreed pnpm/TypeScript monorepo boundaries; concrete runtime behavior is added only through focused changes.
 
-As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The deterministic game engine, typed/runtime-validated protocol contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, Fastify HTTP runtime, provider-independent accounts, Telegram authentication, PostgreSQL-backed application sessions, authenticated WebSocket realtime/reconnect/deadline runtime, casual matchmaking, and private challenges are implemented. The Mini App has a Telegram platform adapter and authentication bootstrap but remains a minimal shell. Bot runtime, client Play/match UI/reconnect transport, and production backend composition remain intentionally unimplemented rather than represented by fake placeholders.
+As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The deterministic game engine, typed/runtime-validated protocol contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, Fastify HTTP runtime, provider-independent accounts, Telegram authentication, PostgreSQL-backed application sessions, authenticated WebSocket realtime/reconnect/deadline runtime, casual matchmaking, private challenges, and thin Telegram bot entry/deep-link runtime are implemented. The Mini App has a Telegram platform adapter and authentication bootstrap but remains a minimal shell. Client Play/match UI/reconnect transport and production backend composition remain intentionally unimplemented rather than represented by fake placeholders.
 
 ## Reference architecture
 
@@ -91,7 +91,7 @@ The server must never accept client-provided game state or client-provided Teleg
 
 A modular monolith is preferred initially. Do not add microservices, Redis, queues, Kafka/RabbitMQ, Kubernetes, or distributed coordination infrastructure without an objective need.
 
-See [`06-authoritative-match-service.md`](06-authoritative-match-service.md) for the service boundary, [`07-durable-match-persistence.md`](07-durable-match-persistence.md) for durable storage/recovery, [`08-authenticated-server-runtime.md`](08-authenticated-server-runtime.md) for HTTP/authentication/session boundaries, [`09-authenticated-realtime-runtime.md`](09-authenticated-realtime-runtime.md) for WebSocket/reconnect/deadline behavior, and [`10-match-entry.md`](10-match-entry.md) for casual/private match entry behavior.
+See [`06-authoritative-match-service.md`](06-authoritative-match-service.md) for the service boundary, [`07-durable-match-persistence.md`](07-durable-match-persistence.md) for durable storage/recovery, [`08-authenticated-server-runtime.md`](08-authenticated-server-runtime.md) for HTTP/authentication/session boundaries, [`09-authenticated-realtime-runtime.md`](09-authenticated-realtime-runtime.md) for WebSocket/reconnect/deadline behavior, [`10-match-entry.md`](10-match-entry.md) for casual/private match entry behavior, and [`11-telegram-entry.md`](11-telegram-entry.md) for the thin Telegram launch/deep-link boundary.
 
 ## Protocol
 

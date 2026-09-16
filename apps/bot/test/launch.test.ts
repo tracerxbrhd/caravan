@@ -22,11 +22,15 @@ describe('Telegram Mini App launch context', () => {
     expect(parseLaunchParam(undefined)).toEqual({ kind: 'HOME' });
     expect(parseLaunchParam('ranked')).toEqual({ kind: 'INVALID' });
     expect(parseLaunchParam('challenge_short')).toEqual({ kind: 'INVALID' });
-    expect(() => buildChallengeLaunchParam('short')).toThrow('Invalid private challenge invite token.');
+    expect(() => buildChallengeLaunchParam('short')).toThrow(
+      'Invalid private challenge invite token.',
+    );
   });
 
   it('parses /start only for this bot and preserves a bounded payload', () => {
-    expect(parseStartCommand(`/start@CaravanExampleBot challenge_${inviteToken}`, 'CaravanExampleBot')).toEqual({
+    expect(
+      parseStartCommand(`/start@CaravanExampleBot challenge_${inviteToken}`, 'CaravanExampleBot'),
+    ).toEqual({
       payload: `challenge_${inviteToken}`,
     });
     expect(parseStartCommand('/start', 'CaravanExampleBot')).toEqual({ payload: undefined });

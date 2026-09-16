@@ -46,7 +46,8 @@ export function extractIncomingMessage(update: unknown): IncomingTelegramMessage
   return {
     chatId: message.chat.id,
     chatType: typeof message.chat.type === 'string' ? message.chat.type : 'unknown',
-    languageCode: from !== undefined && typeof from.language_code === 'string' ? from.language_code : undefined,
+    languageCode:
+      from !== undefined && typeof from.language_code === 'string' ? from.language_code : undefined,
     text: typeof message.text === 'string' ? message.text : undefined,
   };
 }
