@@ -11,10 +11,17 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "node dist/migrate-cli.js"
   },
   "dependencies": {
     "@caravan/game-engine": "workspace:*",
-    "@caravan/protocol": "workspace:*"
+    "@caravan/protocol": "workspace:*",
+    "drizzle-orm": "0.45.1",
+    "pg": "8.18.0",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/pg": "8.16.0"
   }
 }
