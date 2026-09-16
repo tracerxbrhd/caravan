@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented as the first CARAVAN Mini App application flow that reaches durable match entry and an authoritative realtime match snapshot. It deliberately stops before the full interactive card-table presentation and tutorial.
+Implemented as the first CARAVAN Mini App application flow that reaches durable match entry and an authoritative realtime match snapshot. It deliberately stops before the full interactive card-table presentation and later visual rules-guide layer.
 
 ## Responsibilities
 
@@ -120,7 +120,7 @@ Server-side hidden-information and command-concurrency tests remain authoritativ
 
 This layer deliberately does not implement:
 
-- the interactive tutorial;
+- the visual rules guide (implemented later; see `14-rules-guide.md`);
 - richer confirmed deal/play/modifier/discard travel animations beyond the implemented selection/target feedback;
 - sound/haptics settings;
 - complete result/rematch UX;

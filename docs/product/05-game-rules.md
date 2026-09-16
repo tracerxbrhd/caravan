@@ -4,7 +4,7 @@
 
 Accepted as the initial normative CARAVAN rules specification for implementation.
 
-This document defines CARAVAN's own wording and deterministic interpretation of the underlying gameplay mechanics. It is not copied rulebook text. Where historical descriptions or source-game behavior are ambiguous or buggy, this document makes an explicit project decision so the engine, protocol, tutorial, and tests have one source of truth.
+This document defines CARAVAN's own wording and deterministic interpretation of the underlying gameplay mechanics. It is not copied rulebook text. Where historical descriptions or source-game behavior are ambiguous or buggy, this document makes an explicit project decision so the engine, protocol, player-facing rules guide, and tests have one source of truth.
 
 If later direct runtime verification proves that a material gameplay rule was interpreted incorrectly, change this document deliberately together with regression tests. Do not silently encode a different rule in code.
 

@@ -20,7 +20,7 @@ A successful first-playable journey is:
 open from Telegram
 -> authenticate
 -> reach Play
--> complete or skip the interactive tutorial
+-> optionally review the visual rules guide
 -> challenge a friend or enter casual matchmaking
 -> connect to a match
 -> play a complete authoritative game
@@ -43,21 +43,24 @@ The lifecycle must also prevent abandoned matches from remaining active indefini
 
 A large profile system is not required for the first playable.
 
-### Tutorial
+### Rules guide
 
-A short interactive tutorial is required because onboarding is part of the core product hypothesis.
+A concise text-and-visual rules guide is required because onboarding is part of the core product hypothesis, but reading it is not a mandatory gate before matchmaking.
 
-It must teach at minimum:
+It must explain with original wording and clear card examples at minimum:
 
 - the three opposing route pairs;
 - the 21-26 target range;
+- opening route seeding;
 - ascending/descending placement;
 - same-suit direction changes;
 - Jack, Queen, King, and Joker behavior;
-- attacking the opponent's routes;
-- ties and overall victory.
+- play, discard, and route-disband turn choices;
+- lane ownership, ties, deck exhaustion, and overall victory.
 
-The tutorial should use deterministic scripted states rather than random live situations.
+The guide must remain reachable from Play and from an active match. Opening it during a match must not disconnect or replace the authoritative realtime session.
+
+It uses illustrative DOM/CSS card scenes rather than tutorial-only gameplay state. `05-game-rules.md` and the deterministic engine remain authoritative; guide copy must be updated when a player-facing canonical rule changes.
 
 ### Match entry
 

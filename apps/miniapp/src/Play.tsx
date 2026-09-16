@@ -21,6 +21,7 @@ import {
 } from './api.js';
 import { MatchSession } from './MatchSession.js';
 import { platform } from './platform.js';
+import { RulesGuide } from './RulesGuide.js';
 
 type FlowState =
   | { kind: 'HOME'; notice?: string }
@@ -74,6 +75,7 @@ export function Play({
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [recoveryChecked, setRecoveryChecked] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   useEffect(() => {
     if (recoveryChecked || flow.kind !== 'HOME' || launchContext.kind === 'CHALLENGE') return;
@@ -260,9 +262,17 @@ export function Play({
               <button className="button" disabled={busy} onClick={makeChallenge}>
                 Challenge a friend
               </button>
+              <button
+                className="button button--quiet rules-help-button"
+                type="button"
+                onClick={() => setRulesOpen(true)}
+              >
+                How to play
+              </button>
             </div>
             <p className="footnote">
-              Interactive tutorial arrives in its own focused client PR before external testing.
+              Rules are always available here and from the live table. Reading them is optional
+              before matchmaking.
             </p>
           </section>
         )}
@@ -368,6 +378,8 @@ export function Play({
           </section>
         )}
       </section>
+
+      {rulesOpen && <RulesGuide onClose={() => setRulesOpen(false)} />}
     </main>
   );
 }

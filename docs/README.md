@@ -12,7 +12,7 @@ The root `README.md` is intentionally product-facing. Internal technical detail 
 - [`product/04-market-and-competitive-context.md`](product/04-market-and-competitive-context.md) — dated market/competitor snapshot and validation rationale.
 - [`product/05-game-rules.md`](product/05-game-rules.md) — normative canonical gameplay rules for implementation.
 - [`product/06-first-playable-scope.md`](product/06-first-playable-scope.md) — required first vertical slice and explicit deferrals.
-- [`product/07-match-ux-and-tutorial.md`](product/07-match-ux-and-tutorial.md) — match interaction, card-motion language, and interactive tutorial contract.
+- [`product/07-match-ux-and-tutorial.md`](product/07-match-ux-and-tutorial.md) — match interaction, card-motion language, and visual rules-guide contract.
 
 ## Architecture
 
@@ -29,6 +29,7 @@ The root `README.md` is intentionally product-facing. Internal technical detail 
 - [`architecture/11-telegram-entry.md`](architecture/11-telegram-entry.md) — thin Telegram webhook runtime, Mini App launch/deep-link context, invite-token transport boundary, and deployment routing direction.
 - [`architecture/12-miniapp-play-flow.md`](architecture/12-miniapp-play-flow.md) — Mini App launch context, match-entry orchestration, private sharing, and authoritative realtime/resync client.
 - [`architecture/13-interactive-card-table.md`](architecture/13-interactive-card-table.md) — authoritative legal-action-driven card selection, exact targets, pending-command behavior, and responsive table presentation.
+- [`architecture/14-rules-guide.md`](architecture/14-rules-guide.md) — optional text/visual onboarding guide and live-match help boundary.
 
 ## Development
 

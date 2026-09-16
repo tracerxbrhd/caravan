@@ -88,11 +88,10 @@ Its helpers intentionally return the exact matching wire action from the current
 
 This layer does not yet implement:
 
-- the interactive tutorial;
 - event-level confirmed card travel/deal/removal choreography;
 - sound and haptic settings/effects;
 - rematch negotiation;
 - production deployment composition;
 - browser/native authentication.
 
-Those remain focused first-playable or presentation layers rather than hidden inside the table implementation.
+The optional visual rules guide is implemented separately in [`14-rules-guide.md`](14-rules-guide.md), so opening help does not add rules or tutorial state to the competitive table. The remaining items stay focused first-playable or presentation layers rather than hidden inside the table implementation.

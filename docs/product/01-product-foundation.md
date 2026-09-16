@@ -22,7 +22,7 @@ The game occupies a useful niche: it has recognizable mechanics and an existing 
 CARAVAN therefore competes on execution rather than on inventing a new ruleset:
 
 - accurate and deterministic rules;
-- a strong interactive tutorial;
+- a concise visual rules guide with concrete card examples;
 - low-friction social multiplayer;
 - reliable server-authoritative play;
 - tactile presentation;
@@ -49,7 +49,7 @@ In priority order:
 
 1. maintain the accepted canonical rules specification in `05-game-rules.md`;
 2. build and heavily test the deterministic game engine from that specification;
-3. create the concise interactive tutorial defined by the accepted UX contract;
+3. keep the concise visual rules guide accurate, readable, and available before/during matches;
 4. support private challenges and casual matchmaking;
 5. deliver reliable authoritative PvP and reconnect/recovery;
 6. make card handling feel polished on touch devices;
