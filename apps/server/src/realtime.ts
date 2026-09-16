@@ -203,7 +203,9 @@ export async function installRealtimeRuntime(
     connection.matchId = command.matchId;
 
     if (previousController !== undefined && previousController !== connection.id) {
-      connections.get(previousController)?.socket.close(CONTROL_REPLACED_CLOSE_CODE, 'CONTROL_REPLACED');
+      connections
+        .get(previousController)
+        ?.socket.close(CONTROL_REPLACED_CLOSE_CODE, 'CONTROL_REPLACED');
     }
 
     const response = await service.handleCommand(connection.accountId, command);
@@ -224,11 +226,37 @@ export async function installRealtimeRuntime(
     }
 
     const before = await service.getSnapshot(command.matchId, connection.accountId);
+    if (before === null) {
+      await rejectWithoutControl(connection, command);
+      return;
+    }
+    if (
+      before.status === 'ACTIVE' &&
+      (!before.connected.A || !before.connected.B || before.turnDeadlineAtMs === null)
+    ) {
+      send(
+        connection.socket,
+        commandRejectedMessageSchema.parse({
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'COMMAND_REJECTED',
+          serverTimeMs: Date.now(),
+          matchId: command.matchId,
+          commandId: command.commandId,
+          stateVersion: before.stateVersion,
+          code: 'MATCH_NOT_READY',
+          retryable: true,
+          gameErrorCode: null,
+          snapshot: before,
+        }),
+      );
+      return;
+    }
+
     const response = await service.handleCommand(connection.accountId, command);
     send(connection.socket, response);
 
     const afterVersion = messageStateVersion(response);
-    if (afterVersion !== null && afterVersion !== before?.stateVersion) {
+    if (afterVersion !== null && afterVersion !== before.stateVersion) {
       await broadcastMatch(command.matchId, connection.id);
     }
   };
@@ -301,9 +329,10 @@ export async function installRealtimeRuntime(
             await handleStateChangingCommand(connection, parsed.command);
           })
           .catch((error: unknown) => {
-            const code = error instanceof Error && /^[A-Z_]+$/.test(error.message)
-              ? error.message
-              : 'INTERNAL_ERROR';
+            const code =
+              error instanceof Error && /^[A-Z_]+$/.test(error.message)
+                ? error.message
+                : 'INTERNAL_ERROR';
             app.log.warn({ code, connectionId: connection.id }, 'Realtime command failed');
             if (code === 'UNAUTHENTICATED' || code === 'ACCOUNT_DISABLED') {
               socket.close(1008, 'SESSION_EXPIRED');
