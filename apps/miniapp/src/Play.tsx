@@ -166,7 +166,13 @@ export function Play({
   }, [flow]);
 
   if (flow.kind === 'MATCH') {
-    return <MatchSession matchId={flow.matchId} onExit={() => setFlow({ kind: 'HOME' })} />;
+    return (
+      <MatchSession
+        matchId={flow.matchId}
+        onExit={() => setFlow({ kind: 'HOME' })}
+        onRematch={(matchId) => setFlow({ kind: 'MATCH', matchId })}
+      />
+    );
   }
 
   const run = async (operation: () => Promise<void>): Promise<void> => {
