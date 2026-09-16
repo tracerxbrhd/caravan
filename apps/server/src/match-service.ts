@@ -332,9 +332,6 @@ export class MatchService {
       if (match.status === 'FINISHED') {
         return this.#rejection(match, seat, command, 'MATCH_FINISHED', false, null);
       }
-      if (!match.connected.A || !match.connected.B || match.turnDeadlineAtMs === null) {
-        return this.#rejection(match, seat, command, 'MATCH_NOT_READY', true, null);
-      }
 
       let nextGame = match.game;
       let nextStatus: AuthoritativeMatch['status'] = match.status;
@@ -381,7 +378,11 @@ export class MatchService {
         status: nextStatus,
         game: nextGame,
         result: nextResult,
-        turnDeadlineAtMs: finished ? null : this.#now() + this.#turnTimeoutMs,
+        turnDeadlineAtMs: finished
+          ? null
+          : match.turnDeadlineAtMs === null
+            ? null
+            : this.#now() + this.#turnTimeoutMs,
         reconnectDeadlineAtMs: finished
           ? { A: null, B: null }
           : match.reconnectDeadlineAtMs,
