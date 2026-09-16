@@ -20,25 +20,16 @@ describe('game initialization and opening', () => {
 
     expect(state.phase).toBe('OPENING');
     expect(state.activePlayer).toBe('A');
-    expect(state.players.A.hand).toEqual([
-      'A-0',
-      'A-1',
-      'A-2',
-      'A-3',
-      'A-4',
-      'A-5',
-      'A-6',
-      'A-7',
-    ]);
+    expect(state.players.A.hand).toEqual(['A-0', 'A-1', 'A-2', 'A-3', 'A-4', 'A-5', 'A-6', 'A-7']);
     expect(state.players.A.drawPile[0]).toBe('A-8');
     expect(legalActions(state, 'B')).toEqual([]);
 
     const openingActions = legalActions(state, 'A');
     expect(openingActions).toHaveLength(12);
     expect(openingActions.every((action) => action.type === 'PLAY_VALUE_CARD')).toBe(true);
-    expect(new Set(openingActions.map((action) => action.type === 'PLAY_VALUE_CARD' && action.cardId))).toEqual(
-      new Set(['A-0', 'A-1', 'A-2', 'A-7']),
-    );
+    expect(
+      new Set(openingActions.map((action) => action.type === 'PLAY_VALUE_CARD' && action.cardId)),
+    ).toEqual(new Set(['A-0', 'A-1', 'A-2', 'A-7']));
     expect(stateInvariantViolations(state)).toEqual([]);
   });
 
