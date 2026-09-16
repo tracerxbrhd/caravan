@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
+    "configure:production": "node dist/configure-production.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
