@@ -66,9 +66,11 @@ Acceptance is retry-safe for the same accepting account after the challenge has 
 
 ## Concurrency and duplicate-match prevention
 
-Match entry is serialized around the involved internal account IDs with PostgreSQL transaction-scoped advisory locks.
+Match entry uses PostgreSQL transaction-scoped advisory locks rather than process-local mutexes or a new coordination service.
 
-Challenge acceptance additionally locks the durable challenge row before resolution.
+Casual FIFO pairing is intentionally serialized by one small `MATCHMAKING_QUEUE` advisory lock. At the expected first-playable scale this gives deterministic oldest-waiter pairing and removes the race where two simultaneous joins could each insert a row and both miss the other before commit. Operations that mutate queue membership acquire this queue lock before account locks.
+
+Player ownership is then serialized by internal account ID. Multi-account operations acquire account locks in deterministic order, and challenge acceptance additionally locks the durable challenge row before resolution.
 
 Before creating a match the service rechecks whether either account already participates in an active authoritative match. Match creation then occurs through the existing `MatchService` using a transaction-bound `PostgresMatchStore`, so the new authoritative match and the surrounding queue/challenge transition share one PostgreSQL transaction.
 
@@ -80,7 +82,7 @@ This protects the important races:
 - challenge acceptance vs casual matchmaking;
 - creating another entry path while already in an active match.
 
-No Redis/distributed lock service is introduced.
+The global casual queue lock is a deliberate simple-scale choice, not a distributed matchmaking architecture. If horizontal matchmaking throughput ever becomes an objective need, this boundary can be replaced without moving match authority into clients or Telegram. No Redis or separate lock service is introduced now.
 
 ## Match creation boundary
 
