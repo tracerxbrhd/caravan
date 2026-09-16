@@ -12,6 +12,8 @@ const configSchema = z
     TELEGRAM_AUTH_MAX_AGE_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
     TURN_TIMEOUT_SECONDS: z.coerce.number().int().min(15).max(600).default(60),
     RECONNECT_GRACE_SECONDS: z.coerce.number().int().min(5).max(300).default(30),
+    MATCHMAKING_LEASE_SECONDS: z.coerce.number().int().min(30).max(600).default(90),
+    CHALLENGE_TTL_SECONDS: z.coerce.number().int().min(60).max(86400).default(900),
   })
   .passthrough()
   .superRefine((value, ctx) => {
