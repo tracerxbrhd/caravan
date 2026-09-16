@@ -77,7 +77,7 @@ A player performs exactly one primary action on their turn:
 
 1. play one card from hand;
 2. discard one card from hand; or
-3. disband one of their own routes.
+3. disband one of their own non-empty routes.
 
 Playing or discarding a hand card is followed by drawing one replacement card when the draw pile can supply it. Disbanding a route does not consume a hand card and therefore does not draw a replacement.
 
@@ -270,9 +270,11 @@ That card leaves the hand, becomes public in its owner's discard pile, then the 
 
 ## Disbanding a route
 
-A player may use their normal-turn action to remove every card from one of their own routes, including attached modifiers.
+A player may use their normal-turn action to disband one of their own routes only when that route currently contains at least one value card.
 
-Each removed card enters its original owner's discard pile. The route becomes empty and may later be restarted with a value card.
+Disbanding removes every card from that route, including attached modifiers. Each removed card enters its original owner's discard pile. The route becomes empty and may later be restarted with a value card.
+
+An empty route cannot be disbanded as a no-op action. This prevents indefinite turn stalling without changing state.
 
 Disbanding does not draw a card because it does not consume a card from hand.
 
@@ -280,16 +282,17 @@ Disbanding does not draw a card because it does not consume a card from hand.
 
 Jack and Joker effects may remove cards from the middle or end of a route.
 
-After destructive effects:
+Before applying a destructive effect, capture the route's current effective direction and current terminal value-card identity. After removal:
 
 1. surviving value cards retain their relative order;
 2. if fewer than two value cards remain, direction becomes unset;
-3. otherwise derive direction from the final two surviving value cards when their ranks differ;
-4. if those final two ranks are equal because an intervening card was removed, preserve the route's effective direction from immediately before the destructive effect;
-5. apply surviving Queen effects on the new terminal card to that direction;
-6. active suit comes from the newest surviving Queen on the terminal card, otherwise from the terminal value card itself.
+3. otherwise identify the new terminal card and the final two surviving value-card ranks;
+4. when those final two ranks differ, derive the new base direction from that numeric pair, then apply the surviving Queen toggles attached to the new terminal card;
+5. when those final two ranks are equal because an intervening card was removed, preserve the route's effective direction from immediately before the destructive effect;
+6. in that equal-rank case, if removal exposed a different terminal card than before, apply that newly exposed terminal card's surviving Queen toggles once because they were previously inactive; if the terminal card did not change, do not apply its Queens a second time;
+7. active suit comes from the newest surviving Queen on the new terminal card, otherwise from the terminal value card's printed suit.
 
-This explicit rule exists so removal edge cases are deterministic and testable rather than implementation-defined.
+This explicit rule exists so removal edge cases are deterministic and testable rather than implementation-defined, including cases where a Queen-bearing internal card becomes terminal again.
 
 ## Information visibility
 
