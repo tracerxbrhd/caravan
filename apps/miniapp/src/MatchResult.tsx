@@ -113,7 +113,11 @@ export function MatchResult({
         </div>
         <button
           className="button button--primary"
-          disabled={rematchBusy || rematch.status === 'MATCH_FOUND' || (rematch.status === 'WAITING' && rematch.requestedBy === 'YOU')}
+          disabled={
+            rematchBusy ||
+            rematch.status === 'MATCH_FOUND' ||
+            (rematch.status === 'WAITING' && rematch.requestedBy === 'YOU')
+          }
           onClick={onRematch}
         >
           {rematch.status === 'WAITING'

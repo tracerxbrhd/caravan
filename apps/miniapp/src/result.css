@@ -5,8 +5,7 @@
   overflow: hidden;
   border-color: rgba(199, 158, 96, 0.38);
   background:
-    linear-gradient(135deg, rgba(115, 82, 43, 0.12), transparent 44%),
-    rgba(30, 23, 16, 0.92);
+    linear-gradient(135deg, rgba(115, 82, 43, 0.12), transparent 44%), rgba(30, 23, 16, 0.92);
 }
 
 .match-result__heading {

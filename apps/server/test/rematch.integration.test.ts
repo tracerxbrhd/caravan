@@ -99,7 +99,10 @@ describeDatabase('durable rematch handshake', () => {
     const second = await createAccount(pool, 'Second');
     const sourceMatchId = await createFinishedMatch(pool, first, second);
 
-    await Promise.all([service.request(first, sourceMatchId), service.request(second, sourceMatchId)]);
+    await Promise.all([
+      service.request(first, sourceMatchId),
+      service.request(second, sourceMatchId),
+    ]);
 
     const [firstStatus, secondStatus] = await Promise.all([
       service.status(first, sourceMatchId),

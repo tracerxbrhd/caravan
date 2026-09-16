@@ -73,6 +73,7 @@ export function MatchSession({
   onRematchRef.current = onRematch;
 
   useEffect(() => {
+    setConnectionState('CONNECTING');
     setSnapshot(null);
     setRematch(IDLE_REMATCH);
     setRematchError(null);

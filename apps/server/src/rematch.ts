@@ -93,7 +93,10 @@ async function sourceMatch(
   return row ?? null;
 }
 
-function participantsForAccount(source: SourceMatchRow, accountId: string): readonly [string, string] {
+function participantsForAccount(
+  source: SourceMatchRow,
+  accountId: string,
+): readonly [string, string] {
   if (source.player_a !== accountId && source.player_b !== accountId) {
     throw new Error('MATCH_NOT_FOUND');
   }
