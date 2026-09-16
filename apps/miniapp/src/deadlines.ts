@@ -19,7 +19,10 @@ function opponentOf(seat: Seat): Seat {
   return seat === 'A' ? 'B' : 'A';
 }
 
-export function estimatedServerNow(anchor: ServerClockAnchor, clientMonotonicNowMs: number): number {
+export function estimatedServerNow(
+  anchor: ServerClockAnchor,
+  clientMonotonicNowMs: number,
+): number {
   return anchor.serverTimeMs + Math.max(0, clientMonotonicNowMs - anchor.clientMonotonicMs);
 }
 
