@@ -28,13 +28,13 @@ jobs:
 
           table = Path('apps/miniapp/src/CardTable.tsx')
           text = table.read_text()
-          old = """      <PlayingCard
+          old = """<PlayingCard
                 card={node.card}
                 target={target}
                 disabled={disabled}
                 onClick={target ? onTarget : undefined}
               />"""
-          new = """      {target ? (
+          new = """{target ? (
                 <PlayingCard card={node.card} target disabled={disabled} onClick={onTarget} />
               ) : (
                 <PlayingCard card={node.card} />
@@ -82,8 +82,8 @@ jobs:
               'The Mini App consumes validated launch context, restores/renews casual matchmaking, creates and resolves private challenge flows, connects through a validated RESYNC/reconnect WebSocket client, and renders an interactive table directly from sanitized `PlayerView` plus server-projected `legalActions`. The interactive tutorial and richer confirmed-transition/audio/haptic polish remain later focused layers.'
           )
           text = text.replace(
-              'and Mini App API/realtime boundaries have substantive automated tests.',
-              'Mini App API/realtime boundaries, and the card-table legal-action affordance model have substantive automated tests.'
+              'The game engine, protocol, authoritative match service, durable match store, Telegram verifier, server configuration, authenticated HTTP runtime, match-entry lifecycle, realtime lifecycle, actual WebSocket transport, Telegram bot entry runtime, and Mini App API/realtime boundaries have substantive automated tests.',
+              'The game engine, protocol, authoritative match service, durable match store, Telegram verifier, server configuration, authenticated HTTP runtime, match-entry lifecycle, realtime lifecycle, actual WebSocket transport, Telegram bot entry runtime, Mini App API/realtime boundaries, and the card-table legal-action affordance model have substantive automated tests.'
           )
           dev.write_text(text)
           PY
