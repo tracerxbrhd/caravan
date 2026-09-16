@@ -1,3 +1,7 @@
+export * from './accounts.js';
+export * from './app.js';
+export * from './auth.js';
+export * from './config.js';
 export * from './db.js';
 export * from './match-persistence.js';
 export * from './match-service.js';
