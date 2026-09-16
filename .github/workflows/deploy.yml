@@ -1,0 +1,53 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: caravan-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Deploy selected commit
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"
+          test -n "$KNOWN_HOSTS"
+          test -n "$VPS_HOST"
+          test -n "$VPS_USER"
+          test -n "$DEPLOY_PATH"
+          test -n "$PUBLIC_ORIGIN"
+          [[ "$DEPLOY_PATH" =~ ^/[a-zA-Z0-9/._-]+$ ]]
+          [[ "$PUBLIC_ORIGIN" =~ ^https://[^/]+$ ]]
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+          ssh "$VPS_USER@$VPS_HOST" "set -euo pipefail; cd '$DEPLOY_PATH'; test -f .env.production; git fetch origin; git checkout --detach '$GITHUB_SHA'; docker compose --env-file .env.production -f compose.production.yaml config --quiet; docker compose --env-file .env.production -f compose.production.yaml build; docker compose --env-file .env.production -f compose.production.yaml up -d --wait db; docker compose --env-file .env.production -f compose.production.yaml run --rm --no-deps server node dist/migrate-cli.js; docker compose --env-file .env.production -f compose.production.yaml up -d --wait"
+
+      - name: Verify public health
+        env:
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+        run: curl --fail --show-error --silent --retry 6 --retry-delay 5 "$PUBLIC_ORIGIN/health" > /dev/null
