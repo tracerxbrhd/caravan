@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ResponseValidationError, matchmakingStatus } from '../src/api.js';
+import {
+  ApiError,
+  ResponseValidationError,
+  bootstrapAccount,
+  matchmakingStatus,
+} from '../src/api.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -31,5 +36,28 @@ describe('Mini App API boundary', () => {
       ),
     );
     await expect(matchmakingStatus()).rejects.toBeInstanceOf(ResponseValidationError);
+  });
+
+  it('does not permanently cache a failed account bootstrap attempt', async () => {
+    let calls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        calls += 1;
+        if (calls === 1) {
+          return new Response(JSON.stringify({ code: 'TEMPORARY_FAILURE' }), { status: 503 });
+        }
+        return new Response(JSON.stringify({ id: 'account-1', displayName: 'Merchant' }), {
+          status: 200,
+        });
+      }),
+    );
+
+    await expect(bootstrapAccount('')).rejects.toEqual(new ApiError(503, 'TEMPORARY_FAILURE'));
+    await expect(bootstrapAccount('')).resolves.toEqual({
+      id: 'account-1',
+      displayName: 'Merchant',
+    });
+    expect(calls).toBe(2);
   });
 });
