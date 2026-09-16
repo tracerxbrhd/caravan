@@ -1,7 +1,6 @@
 # 02. Player Experience and Platform Strategy
 
 ## Status
-
 Accepted as the initial experience and platform direction. This document describes intended behavior, not implemented functionality.
 
 ## Experience principle
@@ -9,6 +8,8 @@ Accepted as the initial experience and platform direction. This document describ
 CARAVAN should feel like handling cards on a physical table.
 
 Animation, sound, and haptics are not decorative extras: they should communicate state transitions, make legal actions legible, and give virtual cards a sense of weight and location.
+
+The detailed interaction contract is maintained in `07-match-ux-and-tutorial.md`.
 
 ## Match presentation
 
@@ -34,7 +35,7 @@ Target interactions include:
 - selection lift/scale with clear focus;
 - visible legal-target feedback;
 - short placement arcs from hand to table;
-- face-card attachment that visually associates the modifier with its target;
+- modifier-card attachment that visually associates the modifier with its target;
 - discard motion that explains removals rather than teleporting cards away;
 - concise value/status transitions after effects resolve;
 - subtle sound and haptic confirmation.
@@ -59,11 +60,11 @@ It should progressively introduce:
 - route/caravan values;
 - ordering/direction rules;
 - legal and illegal placements;
-- special-card behavior;
+- modifier-card behavior;
 - how a route becomes competitive/winning;
 - how the overall match is resolved.
 
-The exact sequence must be derived from the independently accepted rules specification rather than copied from another game's tutorial or rulebook wording.
+The exact sequence is defined in `07-match-ux-and-tutorial.md` and must remain derived from the accepted canonical rules in `05-game-rules.md`, never copied from another game's tutorial or rulebook wording.
 
 ## Telegram launch strategy
 
@@ -101,4 +102,6 @@ Future Apple/Google/other login providers should resolve to the same internal ac
 
 ## Future product surface
 
-Potential later capabilities include ranked matchmaking, ratings, profiles/history, cosmetics, AI practice, and platform-native notifications. They are not considered implemented or mandatory for the first playable vertical slice unless later product docs explicitly promote them into scope.
+Potential later capabilities include ranked matchmaking, ratings, profiles/history, cosmetics, AI practice, custom deck building, and platform-native notifications. They are not considered implemented or mandatory for the first playable vertical slice unless later product docs explicitly promote them into scope.
+
+The accepted current first-playable boundary is `06-first-playable-scope.md`.
