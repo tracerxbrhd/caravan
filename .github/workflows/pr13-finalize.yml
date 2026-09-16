@@ -1,0 +1,63 @@
+name: PR13 Finalize
+
+on:
+  push:
+    branches:
+      - feat/pr13-rules-visual-guide
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/pr13-rules-visual-guide
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install --global --allow-scripts=pnpm pnpm@12.4.1
+      - name: Stabilize rules overlay lifecycle
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/miniapp/src/RulesGuide.tsx')
+          text = path.read_text()
+          old = """export function RulesGuide({ onClose }: { onClose(): void }) {
+            const closeButton = useRef<HTMLButtonElement>(null);
+
+            useEffect(() => {"""
+          new = """export function RulesGuide({ onClose }: { onClose(): void }) {
+            const closeButton = useRef<HTMLButtonElement>(null);
+            const onCloseRef = useRef(onClose);
+            onCloseRef.current = onClose;
+
+            useEffect(() => {"""
+          if old not in text:
+              raise SystemExit('RulesGuide lifecycle marker missing')
+          text = text.replace(old, new)
+          text = text.replace("if (event.key === 'Escape') onClose();", "if (event.key === 'Escape') onCloseRef.current();")
+          text = text.replace('  }, [onClose]);', '  }, []);', 1)
+          path.write_text(text)
+          PY
+      - name: Install and verify
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm format
+          pnpm build
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+      - name: Remove temporary workflow
+        run: rm .github/workflows/pr13-finalize.yml
+      - name: Commit final branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(miniapp): stabilize rules overlay during live updates'
+          git push origin HEAD:feat/pr13-rules-visual-guide
