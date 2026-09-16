@@ -1,0 +1,326 @@
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-group(*) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.2, 0.72, 0.24, 1);
+}
+
+.card-table {
+  --table-motion-fast: 150ms;
+  --table-motion-medium: 260ms;
+}
+
+.opponent-piles,
+.hand-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.discard-pile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 54px;
+  height: 54px;
+}
+
+.discard-pile__cards {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 52px;
+}
+
+.discard-pile__empty {
+  position: absolute;
+  inset: 7px 4px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(179, 143, 91, 0.28);
+  border-radius: 5px;
+  color: #776b59;
+  font-size: 0.48rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.discard-pile .playing-card {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  width: 32px;
+  height: 46px;
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+.discard-pile .playing-card:nth-last-child(3) {
+  transform: translate(-3px, 1px) rotate(-5deg);
+}
+
+.discard-pile .playing-card:nth-last-child(2) {
+  transform: translate(2px, -1px) rotate(3deg);
+}
+
+.discard-pile .playing-card:last-child {
+  transform: translate(4px, -2px) rotate(1deg);
+}
+
+.discard-pile .playing-card__corner {
+  top: 3px;
+  left: 4px;
+}
+
+.discard-pile .playing-card__corner strong {
+  font-size: 0.52rem;
+}
+
+.discard-pile .playing-card__corner span {
+  font-size: 0.46rem;
+}
+
+.discard-pile .playing-card__corner--bottom,
+.discard-pile .playing-card__suit {
+  display: none;
+}
+
+.discard-pile__count {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid rgba(179, 143, 91, 0.34);
+  border-radius: 999px;
+  color: #d6c5a8;
+  background: #1c1510;
+  font-size: 0.58rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hand-fan {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 28px;
+  perspective: 700px;
+}
+
+.hand-fan .playing-card {
+  margin-left: -17px;
+  transform: translateY(var(--fan-lift, 0)) rotate(var(--fan-angle, 0));
+  transform-origin: 50% 118%;
+}
+
+.hand-fan .playing-card:first-child {
+  margin-left: 0;
+}
+
+.hand-fan .playing-card--selectable:not(:disabled):hover {
+  transform: translateY(calc(var(--fan-lift, 0px) - 5px)) rotate(var(--fan-angle, 0deg));
+}
+
+.hand-fan .playing-card--selected,
+.hand-fan .playing-card--selected:hover {
+  z-index: 20;
+  transform: translateY(-14px) rotate(0deg) scale(1.055);
+}
+
+.route-node {
+  animation: route-card-settle var(--table-motion-medium) cubic-bezier(0.2, 0.72, 0.24, 1) both;
+}
+
+.modifier-chip {
+  transform-origin: 50% 80%;
+  animation: modifier-attach 210ms cubic-bezier(0.2, 0.72, 0.24, 1) both;
+}
+
+.card-back {
+  animation: hidden-card-arrive 190ms cubic-bezier(0.2, 0.72, 0.24, 1) both;
+}
+
+.route-metrics > strong {
+  min-width: 1.4em;
+  text-align: center;
+}
+
+.route-status--in_range {
+  animation: route-ready 360ms ease-out both;
+}
+
+.table-rejection {
+  animation: rejection-nudge 210ms ease-out both;
+}
+
+.match-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.table-feel-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.table-feel-toggle {
+  min-height: 34px;
+  padding: 5px 9px;
+  border: 1px solid rgba(157, 123, 73, 0.34);
+  border-radius: 999px;
+  color: #9f9079;
+  background: rgba(16, 12, 9, 0.28);
+  cursor: pointer;
+  font-size: 0.64rem;
+  transition:
+    border-color var(--table-motion-fast) ease,
+    color var(--table-motion-fast) ease,
+    background var(--table-motion-fast) ease,
+    transform var(--table-motion-fast) ease;
+}
+
+.table-feel-toggle[aria-pressed='true'] {
+  border-color: rgba(206, 166, 103, 0.5);
+  color: #dfcba9;
+  background: rgba(159, 113, 58, 0.12);
+}
+
+.table-feel-toggle:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.table-feel-toggle:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+@keyframes route-card-settle {
+  from {
+    opacity: 0.4;
+    transform: translateY(-7px) scale(1.035);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modifier-attach {
+  from {
+    opacity: 0.2;
+    transform: translateY(-7px) rotate(5deg) scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1);
+  }
+}
+
+@keyframes hidden-card-arrive {
+  from {
+    opacity: 0;
+    transform: translateX(9px) rotate(4deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) rotate(0);
+  }
+}
+
+@keyframes route-ready {
+  0% {
+    box-shadow: 0 0 0 rgba(147, 175, 111, 0);
+  }
+  45% {
+    box-shadow: 0 0 0 4px rgba(147, 175, 111, 0.13);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(147, 175, 111, 0);
+  }
+}
+
+@keyframes rejection-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  35% {
+    transform: translateX(-3px);
+  }
+  70% {
+    transform: translateX(2px);
+  }
+}
+
+.card-table[data-motion='reduced'] .route-node,
+.card-table[data-motion='reduced'] .modifier-chip,
+.card-table[data-motion='reduced'] .card-back,
+.card-table[data-motion='reduced'] .route-status--in_range,
+.card-table[data-motion='reduced'] .table-rejection {
+  animation: none;
+}
+
+.card-table[data-motion='reduced'] .playing-card,
+.card-table[data-motion='reduced'] .table-feel-toggle {
+  transition-duration: 0.01ms;
+}
+
+@media (max-width: 700px) {
+  .hand-fan {
+    justify-content: flex-start;
+  }
+
+  .opponent-piles {
+    gap: 6px;
+  }
+
+  .match-controls {
+    align-items: flex-end;
+  }
+}
+
+@media (max-width: 440px) {
+  .hand-fan {
+    padding-inline: 20px;
+  }
+
+  .hand-fan .playing-card {
+    margin-left: -15px;
+  }
+
+  .opponent-piles .discard-pile {
+    display: none;
+  }
+
+  .hand-status {
+    align-items: flex-end;
+  }
+
+  .match-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .table-feel-controls {
+    order: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+  }
+}

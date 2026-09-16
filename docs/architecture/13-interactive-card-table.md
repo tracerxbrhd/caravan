@@ -4,6 +4,8 @@
 
 Implemented as the first fully interactive competitive match surface in the Mini App. This layer consumes the authoritative `MatchSnapshot` and realtime helpers introduced by the Mini App Play flow; it does not introduce another gameplay state machine or transport.
 
+Confirmed card travel, public discard destinations, sound, haptics, and richer causal presentation are implemented as the separate downstream layer in [`16-tactile-game-feel.md`](16-tactile-game-feel.md).
+
 ## Authority model
 
 The table is a presentation and intent-collection layer only.
@@ -76,7 +78,7 @@ Hand and long route contents may scroll horizontally within their local region.
 
 Selection and legal-target feedback use transform, opacity, border, and shadow animation. Reduced-motion users inherit the Mini App's existing `prefers-reduced-motion` fallback, which collapses decorative animation without removing state information.
 
-This PR establishes tactile selection/target feedback only. Confirmed deal/play/removal travel animation, sound, haptics, and richer causal transition choreography remain later presentation work.
+Confirmed deal/play/removal travel, public discard choreography, original sound, platform haptics, and explicit presentation preferences are layered on top of this interaction model by architecture document 16. That later layer still replaces the rendered authoritative snapshot rather than creating optimistic game state.
 
 ## Pure interaction model
 
@@ -86,12 +88,13 @@ Its helpers intentionally return the exact matching wire action from the current
 
 ## Deferred
 
-This layer does not yet implement:
+This interaction layer itself does not own:
 
-- event-level confirmed card travel/deal/removal choreography;
-- sound and haptic settings/effects;
+- server lifecycle/result logic;
 - rematch negotiation;
 - production deployment composition;
 - browser/native authentication.
 
-The optional visual rules guide is implemented separately in [`14-rules-guide.md`](14-rules-guide.md), so opening help does not add rules or tutorial state to the competitive table. The remaining items stay focused first-playable or presentation layers rather than hidden inside the table implementation.
+Authoritative results/rematches are implemented separately in [`15-results-and-rematch.md`](15-results-and-rematch.md). Tactile confirmed transitions and feedback are implemented separately in [`16-tactile-game-feel.md`](16-tactile-game-feel.md). Keeping those concerns downstream preserves the table's narrow role as an authoritative-action affordance surface.
+
+The optional visual rules guide is implemented separately in [`14-rules-guide.md`](14-rules-guide.md), so opening help does not add rules or tutorial state to the competitive table.

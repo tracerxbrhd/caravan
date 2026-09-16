@@ -31,6 +31,7 @@ The root `README.md` is intentionally product-facing. Internal technical detail 
 - [`architecture/13-interactive-card-table.md`](architecture/13-interactive-card-table.md) — authoritative legal-action-driven card selection, exact targets, pending-command behavior, and responsive table presentation.
 - [`architecture/14-rules-guide.md`](architecture/14-rules-guide.md) — optional text/visual onboarding guide and live-match help boundary.
 - [`architecture/15-results-and-rematch.md`](architecture/15-results-and-rematch.md) — authoritative result presentation and durable two-party rematch handshake.
+- [`architecture/16-tactile-game-feel.md`](architecture/16-tactile-game-feel.md) — confirmed card-motion choreography, public discard destinations, original audio cues, platform haptics, and reduced-motion behavior.
 
 ## Development
 

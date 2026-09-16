@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted as the interaction contract for the CARAVAN match experience. The competitive tap-select/tap-target table, visual rules guide, authoritative result surface, and direct rematch loop are implemented; richer confirmed-transition choreography and sound/haptics remain follow-up work.
+Accepted as the interaction contract for the CARAVAN match experience. The competitive tap-select/tap-target table, visual rules guide, authoritative result surface, direct rematch loop, and baseline tactile presentation layer are implemented. Confirmed public-card transitions, original procedural sound, platform haptics, and reduced-motion controls are present; richer per-action choreography remains follow-up polish.
 
 The purpose of this document is to keep the client feeling like a coherent digital card table while keeping the game client non-authoritative.
 
