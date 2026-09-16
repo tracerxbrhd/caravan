@@ -17,7 +17,7 @@
   "dependencies": {
     "@caravan/game-engine": "workspace:*",
     "@caravan/protocol": "workspace:*",
-    "drizzle-orm": "0.45.1",
+    "drizzle-orm": "0.45.2",
     "pg": "8.18.0",
     "zod": "4.3.6"
   },
