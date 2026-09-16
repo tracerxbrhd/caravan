@@ -31,6 +31,80 @@ describe('TelegramClient', () => {
     });
   });
 
+  it('uses strict production configuration payloads for webhook and menu button', async () => {
+    const requests: { url: string; body: unknown }[] = [];
+    const responses: unknown[] = [
+      {
+        id: 99,
+        is_bot: true,
+        username: 'CaravanExampleBot',
+        has_main_web_app: true,
+      },
+      true,
+      true,
+      {
+        url: 'https://caravan.example.com/telegram/webhook',
+        pending_update_count: 0,
+        allowed_updates: ['message'],
+      },
+      {
+        type: 'web_app',
+        text: 'CARAVAN',
+        web_app: { url: 'https://caravan.example.com' },
+      },
+    ];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      requests.push({ url: String(input), body: JSON.parse(String(init?.body ?? '{}')) as unknown });
+      return new Response(JSON.stringify({ ok: true, result: responses.shift() }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    };
+    const client = new TelegramClient(botToken, { fetchImpl });
+
+    await expect(client.getMe()).resolves.toEqual({
+      id: 99,
+      username: 'CaravanExampleBot',
+      hasMainWebApp: true,
+    });
+    await client.setWebhook({
+      url: 'https://caravan.example.com/telegram/webhook',
+      secretToken: 'a'.repeat(32),
+      allowedUpdates: ['message'],
+    });
+    await client.setChatMenuButton({ text: 'CARAVAN', url: 'https://caravan.example.com' });
+    await expect(client.getWebhookInfo()).resolves.toEqual({
+      url: 'https://caravan.example.com/telegram/webhook',
+      pendingUpdateCount: 0,
+      allowedUpdates: ['message'],
+    });
+    await expect(client.getChatMenuButton()).resolves.toEqual({
+      type: 'web_app',
+      text: 'CARAVAN',
+      webAppUrl: 'https://caravan.example.com',
+    });
+
+    expect(requests.map((request) => request.url.split('/').at(-1))).toEqual([
+      'getMe',
+      'setWebhook',
+      'setChatMenuButton',
+      'getWebhookInfo',
+      'getChatMenuButton',
+    ]);
+    expect(requests[1]?.body).toEqual({
+      url: 'https://caravan.example.com/telegram/webhook',
+      secret_token: 'a'.repeat(32),
+      allowed_updates: ['message'],
+    });
+    expect(requests[2]?.body).toEqual({
+      menu_button: {
+        type: 'web_app',
+        text: 'CARAVAN',
+        web_app: { url: 'https://caravan.example.com' },
+      },
+    });
+  });
+
   it('replaces transport and API response failures with generic errors', async () => {
     const transportFailure: typeof fetch = async () => {
       throw new Error(`request to /bot${botToken}/sendMessage failed`);
@@ -43,7 +117,7 @@ describe('TelegramClient', () => {
     ).rejects.toThrow('Telegram Bot API request failed.');
     await expect(
       new TelegramClient(botToken, { fetchImpl: apiFailure }).sendMessage(message),
-    ).rejects.toThrow('Telegram Bot API rejected sendMessage.');
+    ).rejects.toThrow('Telegram Bot API rejected request.');
 
     try {
       await new TelegramClient(botToken, { fetchImpl: transportFailure }).sendMessage(message);
