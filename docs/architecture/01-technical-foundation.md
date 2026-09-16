@@ -4,7 +4,7 @@
 
 Accepted as the initial architecture direction. The repository scaffold implements the agreed pnpm/TypeScript monorepo boundaries; concrete runtime behavior is added only through focused changes.
 
-As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The deterministic game engine, typed/runtime-validated protocol contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, Fastify HTTP runtime, provider-independent accounts, Telegram authentication, and PostgreSQL-backed application sessions are implemented. The Mini App has a Telegram platform adapter and authentication bootstrap but remains a minimal shell. Bot runtime, WebSocket transport, connection ownership, reconnect/deadline scheduling, matchmaking, and production backend composition remain intentionally unimplemented rather than represented by fake placeholders.
+As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The deterministic game engine, typed/runtime-validated protocol contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, Fastify HTTP runtime, provider-independent accounts, Telegram authentication, PostgreSQL-backed application sessions, and authenticated WebSocket realtime/reconnect/deadline runtime are implemented. The Mini App has a Telegram platform adapter and authentication bootstrap but remains a minimal shell. Bot runtime, matchmaking/challenges, client match UI/reconnect transport, and production backend composition remain intentionally unimplemented rather than represented by fake placeholders.
 
 ## Reference architecture
 
@@ -80,17 +80,17 @@ Use strict types and discriminated unions for actions/events rather than generic
 - match result/finalization;
 - future rating/progression/economy effects.
 
-The match-service implementation owns secure starter-deck shuffle/mulligan, starting-seat selection, authoritative match state, `stateVersion`, command idempotency, stale rejection, game-engine application, lifecycle finalization, and per-player snapshot projection.
+The match-service implementation owns secure starter-deck shuffle/mulligan, starting-seat selection, authoritative match state, `stateVersion`, command idempotency, stale rejection, game-engine application, lifecycle finalization, durable connection/deadline state, and per-player snapshot projection.
 
-`MatchStore` remains the storage boundary. `InMemoryMatchStore` is retained for focused tests, while `PostgresMatchStore` durably stores versioned authoritative JSONB snapshots and preserves compare-and-set/idempotency semantics across process restarts.
+`MatchStore` remains the storage boundary. `InMemoryMatchStore` is retained for focused tests, while `PostgresMatchStore` durably stores versioned authoritative JSONB snapshots and preserves compare-and-set/idempotency semantics across process restarts. It can also enumerate active match IDs for lifecycle sweeps and restart recovery.
 
-The HTTP runtime now provides liveness/readiness, Telegram `initData` authentication, provider-independent account resolution, opaque application sessions, `/api/me`, and logout. WebSocket transport, connection ownership, reconnect/deadline scheduling, and matchmaking remain later focused layers.
+The runtime provides liveness/readiness, Telegram `initData` authentication, provider-independent account resolution, opaque application sessions, `/api/me`, logout, and authenticated `/ws` gameplay transport. Realtime reuses the application session cookie, establishes one controlling socket per account/match, broadcasts only viewer-specific fresh projections, persists connect/disconnect/deadline changes through the same CAS boundary, and recovers stale socket-presence state after restart.
 
 The server must never accept client-provided game state or client-provided Telegram identity fields as authoritative.
 
 A modular monolith is preferred initially. Do not add microservices, Redis, queues, Kafka/RabbitMQ, Kubernetes, or distributed coordination infrastructure without an objective need.
 
-See [`06-authoritative-match-service.md`](06-authoritative-match-service.md) for the implemented service boundary, [`07-durable-match-persistence.md`](07-durable-match-persistence.md) for durable storage/recovery, and [`08-authenticated-server-runtime.md`](08-authenticated-server-runtime.md) for HTTP/authentication/session boundaries.
+See [`06-authoritative-match-service.md`](06-authoritative-match-service.md) for the service boundary, [`07-durable-match-persistence.md`](07-durable-match-persistence.md) for durable storage/recovery, [`08-authenticated-server-runtime.md`](08-authenticated-server-runtime.md) for HTTP/authentication/session boundaries, and [`09-authenticated-realtime-runtime.md`](09-authenticated-realtime-runtime.md) for WebSocket/reconnect/deadline behavior.
 
 ## Protocol
 
@@ -110,7 +110,7 @@ Use internal domain account IDs. Telegram user IDs belong only to `account_ident
 
 Authoritative match state is stored as a versioned JSONB snapshot suitable for recovery after a normal process/container restart. Complex game state is not decomposed into relational rows merely to make the schema look normalized when JSONB is the correct persistence boundary.
 
-The PostgreSQL `MatchStore` adapter preserves compare-and-set state-version semantics in one conditional update and persists processed command identity in the same authoritative snapshot as the accepted state. Persistence envelope versioning is separate from the game-engine state schema version, and restored snapshots are runtime-validated before use.
+The PostgreSQL `MatchStore` adapter preserves compare-and-set state-version semantics in one conditional update and persists processed command identity, connection flags, and authoritative deadlines in the same authoritative snapshot as accepted state. Persistence envelope versioning is separate from the game-engine state schema version, and restored snapshots are runtime-validated before use.
 
 Application sessions are cryptographically random opaque tokens delivered through an `HttpOnly` cookie. PostgreSQL stores only token hashes plus expiration/revocation state; raw session tokens and raw Telegram `initData` are not persisted.
 
