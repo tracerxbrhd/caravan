@@ -23,6 +23,7 @@ The root `README.md` is intentionally product-facing. Internal technical detail 
 - [`architecture/05-protocol-contracts.md`](architecture/05-protocol-contracts.md) — typed/runtime-validated wire commands, sanitized snapshots, lifecycle results, and rejection contracts.
 - [`architecture/06-authoritative-match-service.md`](architecture/06-authoritative-match-service.md) — secure match initialization, command idempotency, state-version concurrency, lifecycle finalization, and storage port.
 - [`architecture/07-durable-match-persistence.md`](architecture/07-durable-match-persistence.md) — PostgreSQL authoritative snapshots, persistence versioning, atomic CAS, retry durability, restart recovery, migrations, and local database containerization.
+- [`architecture/08-authenticated-server-runtime.md`](architecture/08-authenticated-server-runtime.md) — Fastify runtime, provider-independent accounts, Telegram `initData` verification, opaque PostgreSQL sessions, HTTP security baseline, and Mini App authentication bootstrap.
 
 ## Development
 
