@@ -35,9 +35,12 @@ Reuse patterns when they solve the same problem. Do not turn CARAVAN into an UND
 - Original branding, wording, art, audio, UI, and implementation.
 - Do not use Fallout/Bethesda assets, franchise characters/factions/logos/dialogue/music/SFX, extracted files, copied UI, source code, or copied rulebook text.
 - `packages/game-engine` must be deterministic and framework-free.
-- The server is authoritative for shuffle/deck order, draws, hands, legal actions, committed state, timers, and results.
-- Hidden information is a security boundary: never send authoritative state containing opponent hands or future deck order directly to clients.
+- The server is authoritative for shuffle/deck order, starting seat, draws, hands, legal actions, committed state, timers, and results.
+- Hidden information is a security boundary: never send authoritative state containing opponent hands or future/rejected deck order directly to clients.
+- Card ownership is immutable for a match; opponent-owned modifiers may sit on a route but return to their original owner's discard pile when removed.
+- Public discard information must not be accidentally treated as hidden state.
 - Client commands use authenticated ownership plus command/state-version validation; duplicate retries must not apply twice.
+- Surrender/timeout/reconnect lifecycle belongs to the authoritative server layer, not the pure card-rule action model.
 - Persist accepted authoritative state before broadcasting it.
 - Telegram APIs stay behind a platform adapter and must not leak into game rules.
 - PostgreSQL is the durable source of truth unless an accepted decision changes it.
@@ -47,6 +50,6 @@ Reuse patterns when they solve the same problem. Do not turn CARAVAN into an UND
 
 Use strict TypeScript. Avoid `any`, `@ts-ignore`, duplicated rules, hidden global state, and fake security/gameplay implementations.
 
-Game rules require unit/regression/property coverage for invariants and edge cases. Server integration tests should cover stale/duplicate commands, hidden-information isolation, reconnect/recovery, concurrency, and finalization.
+Game rules require unit/regression/property coverage for invariants and edge cases. Server integration tests should cover stale/duplicate commands, hidden-information isolation, reconnect/recovery, lifecycle deadlines, concurrency, and idempotent finalization.
 
 Run the repository's available format, lint, typecheck, tests, and builds before substantial work is considered complete.
