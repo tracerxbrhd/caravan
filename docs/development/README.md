@@ -86,10 +86,10 @@ cp .env.example .env
 docker compose up -d db
 ```
 
-Export/load `DATABASE_URL` from `.env`, then build the server and apply committed migrations:
+Export/load `DATABASE_URL` from `.env`, then build the workspace and apply committed migrations:
 
 ```bash
-pnpm --filter @caravan/server build
+pnpm build
 pnpm --filter @caravan/server db:migrate
 ```
 
@@ -174,7 +174,7 @@ Server tests protect:
 
 ## CI
 
-`.github/workflows/ci.yml` runs on pull requests and pushes to `main` using Node.js 24 and PostgreSQL 18. CI performs frozen dependency installation, validates `compose.yaml`, builds the server, applies committed database migrations, then runs the repository build/lint/format/typecheck/test gate and production dependency audit.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main` using Node.js 24 and PostgreSQL 18. CI performs frozen dependency installation, validates `compose.yaml`, builds the workspace, applies committed database migrations, then runs the repository build/lint/format/typecheck/test gate and production dependency audit.
 
 `CARAVAN_REQUIRE_DATABASE_TESTS=1` makes PostgreSQL integration coverage mandatory in CI. Playwright and production application-container/deployment checks should be added only when the corresponding runtime surfaces exist.
 
