@@ -2,9 +2,9 @@
 
 ## Status
 
-Accepted as the initial interaction contract for the CARAVAN match experience. This describes intended behavior, not implemented UI.
+Accepted as the interaction contract for the CARAVAN match experience. The competitive tap-select/tap-target table foundation is implemented; richer confirmed-transition choreography, sound/haptics, and the interactive tutorial remain follow-up work.
 
-The purpose of this document is to make the first client feel like a coherent digital card table while keeping the game client non-authoritative.
+The purpose of this document is to keep the client feeling like a coherent digital card table while keeping the game client non-authoritative.
 
 ## Core UX principle
 

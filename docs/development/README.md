@@ -1,6 +1,6 @@
 # Development
 
-CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, typed/runtime-validated `packages/protocol` contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, authenticated Fastify HTTP runtime, authenticated WebSocket realtime runtime, durable match-entry runtime in `apps/server`, and a thin Telegram entry runtime in `apps/bot`. Telegram `initData` authentication, provider-independent accounts, PostgreSQL-backed application sessions, casual matchmaking, private challenges, reconnect/deadline lifecycle, bot `/start`/webhook/deep-link entry, and the Mini App authentication bootstrap are implemented. Mini App Play/match-entry/realtime orchestration is implemented; the interactive tutorial, full card-table interaction/polish, and production application deployment remain intentionally unimplemented unless later documentation says otherwise.
+CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, typed/runtime-validated `packages/protocol` contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, authenticated Fastify HTTP runtime, authenticated WebSocket realtime runtime, durable match-entry runtime in `apps/server`, and a thin Telegram entry runtime in `apps/bot`. Telegram `initData` authentication, provider-independent accounts, PostgreSQL-backed application sessions, casual matchmaking, private challenges, reconnect/deadline lifecycle, bot `/start`/webhook/deep-link entry, and the Mini App authentication bootstrap are implemented. Mini App Play/match-entry/realtime orchestration and the legal-action-driven interactive card table are implemented; the interactive tutorial, richer tactile transition/audio/haptic polish, and production application deployment remain intentionally unimplemented unless later documentation says otherwise.
 
 ## Before implementation work
 
@@ -26,6 +26,7 @@ For gameplay, server, protocol, persistence, authentication, realtime, match-ent
 16. [`../architecture/10-match-entry.md`](../architecture/10-match-entry.md)
 17. [`../architecture/11-telegram-entry.md`](../architecture/11-telegram-entry.md)
 18. [`../architecture/12-miniapp-play-flow.md`](../architecture/12-miniapp-play-flow.md)
+19. [`../architecture/13-interactive-card-table.md`](../architecture/13-interactive-card-table.md)
 
 `product/04-market-and-competitive-context.md` is useful product context but is not an implementation contract.
 
@@ -55,7 +56,7 @@ Dependency upgrades should be deliberate and verified rather than mixed into unr
 
 ```text
 apps/
-  miniapp/       React/Vite Play + platform/auth + match-entry/realtime orchestration
+  miniapp/       React/Vite Play + auth/match-entry/realtime + interactive card table
   bot/           Telegram webhook + Mini App entry/deep-link runtime
   server/        authenticated HTTP/WS runtime + match entry + authoritative match service + PostgreSQL persistence
 
@@ -74,7 +75,7 @@ packages/
 
 Telegram user IDs are external identity subjects only. Gameplay and match-entry ownership use internal CARAVAN account UUIDs. Raw Telegram `initData`, session tokens, cookies, invite tokens, and authorization material must never be logged or stored as ordinary application data. Private invite tokens are stored only by SHA-256 hash.
 
-`bot` exposes a minimal Telegram webhook runtime with `/start`, Mini App launch buttons, challenge deep-link fallback, and `/health`; it remains non-authoritative for accounts, challenges, and gameplay. `server` exposes authenticated HTTP match-entry routes and `/ws` for authenticated gameplay realtime. The Mini App now consumes validated launch context, restores/renews casual matchmaking, creates and resolves private challenge flows, and connects to matches through a validated RESYNC/reconnect WebSocket client. Full card-table interaction and the interactive tutorial remain later focused layers.
+`bot` exposes a minimal Telegram webhook runtime with `/start`, Mini App launch buttons, challenge deep-link fallback, and `/health`; it remains non-authoritative for accounts, challenges, and gameplay. `server` exposes authenticated HTTP match-entry routes and `/ws` for authenticated gameplay realtime. The Mini App consumes validated launch context, restores/renews casual matchmaking, creates and resolves private challenge flows, connects through a validated RESYNC/reconnect WebSocket client, and renders an interactive table directly from sanitized `PlayerView` plus server-projected `legalActions`. The interactive tutorial and richer confirmed-transition/audio/haptic polish remain later focused layers.
 
 The engine does not generate live randomness and does not own surrender, timeout, reconnect, persistence, authentication, matchmaking, private challenges, WebSocket broadcasting, or server command idempotency/state-version semantics. The protocol describes gameplay and match-entry wire boundaries; the server service, persistence adapters, and runtime implement authoritative command/state/storage/authentication/realtime/match-entry semantics.
 
@@ -184,7 +185,7 @@ pnpm verify
 
 PostgreSQL integration tests run when `DATABASE_URL` is available. CI additionally sets `CARAVAN_REQUIRE_DATABASE_TESTS=1`, so database coverage cannot silently skip there. CI test files run serially because multiple database integration suites intentionally truncate the same isolated test database between cases; this prevents cross-file test races without changing normal application concurrency behavior.
 
-The game engine, protocol, authoritative match service, durable match store, Telegram verifier, server configuration, authenticated HTTP runtime, match-entry lifecycle, realtime lifecycle, actual WebSocket transport, Telegram bot entry runtime, and Mini App API/realtime boundaries have substantive automated tests. Vitest still permits zero tests globally only because remaining scaffold-only apps do not yet have behavior worth testing. Do not add meaningless placeholder tests merely to increase a count.
+The game engine, protocol, authoritative match service, durable match store, Telegram verifier, server configuration, authenticated HTTP runtime, match-entry lifecycle, realtime lifecycle, actual WebSocket transport, Telegram bot entry runtime, Mini App API/realtime boundaries, and the card-table legal-action affordance model have substantive automated tests. Vitest still permits zero tests globally only because remaining scaffold-only apps do not yet have behavior worth testing. Do not add meaningless placeholder tests merely to increase a count.
 
 ## Game-engine testing baseline
 

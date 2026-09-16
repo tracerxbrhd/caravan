@@ -148,16 +148,19 @@ function RouteCardNode({
 }) {
   return (
     <div className="route-node">
-      <PlayingCard
-        card={node.card}
-        target={target}
-        disabled={disabled}
-        onClick={target ? onTarget : undefined}
-      />
+      {target ? (
+        <PlayingCard card={node.card} target disabled={disabled} onClick={onTarget} />
+      ) : (
+        <PlayingCard card={node.card} />
+      )}
       {node.modifiers.length > 0 && (
         <div className="modifier-stack" aria-label={`${node.modifiers.length} attached modifiers`}>
           {node.modifiers.map((modifier) => (
-            <div className="modifier-chip" key={modifier.id} title={`${rankLabel(modifier)} ${suitName(modifier)}`}>
+            <div
+              className="modifier-chip"
+              key={modifier.id}
+              title={`${rankLabel(modifier)} ${suitName(modifier)}`}
+            >
               <span>{rankLabel(modifier)}</span>
               <span>{suitGlyph(modifier)}</span>
             </div>
@@ -224,7 +227,11 @@ function RouteStrip({
           </span>
           {route.activeSuit !== null && (
             <span className="route-suit" title={`Active suit: ${route.activeSuit.toLowerCase()}`}>
-              {suitGlyph({ id: 'route-suit', owner: seat, face: { rank: 'ACE', suit: route.activeSuit } })}
+              {suitGlyph({
+                id: 'route-suit',
+                owner: seat,
+                face: { rank: 'ACE', suit: route.activeSuit },
+              })}
             </span>
           )}
         </div>
@@ -257,7 +264,12 @@ function RouteStrip({
       </div>
 
       {valueTarget && (
-        <button type="button" className="route-place-target" disabled={disabled} onClick={playValue}>
+        <button
+          type="button"
+          className="route-place-target"
+          disabled={disabled}
+          onClick={playValue}
+        >
           Place selected card here
         </button>
       )}
@@ -269,7 +281,11 @@ function RouteStrip({
               <button type="button" className="route-confirm" disabled={disabled} onClick={disband}>
                 Confirm disband
               </button>
-              <button type="button" className="route-cancel" onClick={() => setConfirmDisband(null)}>
+              <button
+                type="button"
+                className="route-cancel"
+                onClick={() => setConfirmDisband(null)}
+              >
                 Keep route
               </button>
             </>
@@ -373,7 +389,10 @@ export function CardTable({
             <span>Discard {game.players[opponent].discardPile.length}</span>
           </div>
         </div>
-        <div className="opponent-hand" aria-label={`${game.players[opponent].handSize} hidden cards`}>
+        <div
+          className="opponent-hand"
+          aria-label={`${game.players[opponent].handSize} hidden cards`}
+        >
           {Array.from({ length: Math.min(game.players[opponent].handSize, 8) }, (_, index) => (
             <span className="card-back" key={index} />
           ))}
@@ -401,7 +420,9 @@ export function CardTable({
                 submit={submit}
               />
 
-              <div className={`lane-marker ${owner === viewer ? 'lane-marker--yours' : owner === opponent ? 'lane-marker--rival' : ''}`}>
+              <div
+                className={`lane-marker ${owner === viewer ? 'lane-marker--yours' : owner === opponent ? 'lane-marker--rival' : ''}`}
+              >
                 <span>Lane {routeIndex + 1}</span>
                 <strong>{owner === null ? 'Open' : owner === viewer ? 'Yours' : 'Rival'}</strong>
               </div>
@@ -427,7 +448,9 @@ export function CardTable({
 
       <section className="table-guidance" aria-live="polite">
         <div>
-          <span className="section-kicker">{game.phase === 'OPENING' ? 'Opening' : 'Your move'}</span>
+          <span className="section-kicker">
+            {game.phase === 'OPENING' ? 'Opening' : 'Your move'}
+          </span>
           <strong>
             {!connectionReady
               ? 'Recovering connection…'
@@ -470,7 +493,12 @@ export function CardTable({
             <span>Discard {game.players[viewer].discardPile.length}</span>
           </div>
           {interaction?.canDiscard === true && (
-            <button type="button" className="button button--quiet" disabled={disabled} onClick={discardSelected}>
+            <button
+              type="button"
+              className="button button--quiet"
+              disabled={disabled}
+              onClick={discardSelected}
+            >
               Discard selected
             </button>
           )}
@@ -483,15 +511,29 @@ export function CardTable({
             {confirmSurrender ? (
               <>
                 <span>End the match and concede?</span>
-                <button type="button" className="button button--danger" disabled={disabled} onClick={surrender}>
+                <button
+                  type="button"
+                  className="button button--danger"
+                  disabled={disabled}
+                  onClick={surrender}
+                >
                   Confirm surrender
                 </button>
-                <button type="button" className="button button--quiet" onClick={() => setConfirmSurrender(false)}>
+                <button
+                  type="button"
+                  className="button button--quiet"
+                  onClick={() => setConfirmSurrender(false)}
+                >
                   Cancel
                 </button>
               </>
             ) : (
-              <button type="button" className="button button--quiet" disabled={pending} onClick={() => setConfirmSurrender(true)}>
+              <button
+                type="button"
+                className="button button--quiet"
+                disabled={pending}
+                onClick={() => setConfirmSurrender(true)}
+              >
                 Surrender
               </button>
             )}

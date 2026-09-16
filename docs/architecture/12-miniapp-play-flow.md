@@ -85,13 +85,11 @@ The realtime client exposes typed helpers for future table UI:
 
 A state-changing command is not sent until an authoritative active snapshot exists. Its `expectedStateVersion` comes from that snapshot. The transport does not fabricate or optimistically commit game state.
 
-PR11 itself does not yet expose card actions in the UI. That remains the next focused card-table layer.
+PR11 introduced typed state-changing helpers without exposing them through card controls. The interactive table added later consumes those helpers directly; see [`13-interactive-card-table.md`](13-interactive-card-table.md).
 
 ## Presentation boundary
 
-The current match screen is intentionally a read-only connection/session shell. It shows enough sanitized route/turn state to prove that the player has reached the authoritative match without claiming that the full gameplay UX is finished.
-
-The next table implementation should consume the existing `MatchSnapshot`, `legalActions`, and realtime send helpers rather than building another match transport.
+The match transport remains independent from table presentation. The interactive table consumes the existing `MatchSnapshot`, `legalActions`, and realtime send helpers rather than building another match transport or client-owned rules layer.
 
 ## Local development
 
@@ -123,8 +121,7 @@ Server-side hidden-information and command-concurrency tests remain authoritativ
 This layer deliberately does not implement:
 
 - the interactive tutorial;
-- card selection and legal-target highlighting;
-- tactile deal/play/modifier/discard animations;
+- richer confirmed deal/play/modifier/discard travel animations beyond the implemented selection/target feedback;
 - sound/haptics settings;
 - complete result/rematch UX;
 - browser/native authentication;

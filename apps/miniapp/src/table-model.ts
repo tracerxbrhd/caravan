@@ -16,11 +16,7 @@ export interface CardInteraction {
 }
 
 export function selectableCardIds(actions: readonly WireGameAction[]): readonly string[] {
-  return [
-    ...new Set(
-      actions.flatMap((action) => ('cardId' in action ? [action.cardId] : [])),
-    ),
-  ];
+  return [...new Set(actions.flatMap((action) => ('cardId' in action ? [action.cardId] : [])))];
 }
 
 export function cardInteraction(
@@ -91,9 +87,8 @@ export function discardAction(
   cardId: string,
 ): WireGameAction | null {
   return (
-    actions.find(
-      (action) => action.type === 'DISCARD_HAND_CARD' && action.cardId === cardId,
-    ) ?? null
+    actions.find((action) => action.type === 'DISCARD_HAND_CARD' && action.cardId === cardId) ??
+    null
   );
 }
 
@@ -101,7 +96,9 @@ export function disbandAction(
   actions: readonly WireGameAction[],
   route: RouteIndex,
 ): WireGameAction | null {
-  return actions.find((action) => action.type === 'DISBAND_ROUTE' && action.route === route) ?? null;
+  return (
+    actions.find((action) => action.type === 'DISBAND_ROUTE' && action.route === route) ?? null
+  );
 }
 
 export function isModifierTarget(
