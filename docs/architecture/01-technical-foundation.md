@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted as the initial architecture direction. The repository is currently pre-implementation; concrete dependencies and versions must be verified when scaffolding begins.
+Accepted as the initial architecture direction. The repository scaffold now implements the agreed pnpm/TypeScript monorepo boundaries; concrete runtime behavior is added only through later focused changes.
+
+As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The Mini App contains only a minimal React/Vite shell. Bot, server, protocol, and game-engine runtime/domain behavior remain intentionally unimplemented rather than represented by fake placeholders.
 
 ## Reference architecture
 
@@ -12,7 +14,7 @@ It must not copy backgammon-specific domain abstractions or prematurely extract 
 
 ## Repository shape
 
-Prefer a pnpm TypeScript monorepo:
+The accepted pnpm TypeScript monorepo shape is now established:
 
 ```text
 apps/
