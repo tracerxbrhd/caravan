@@ -12,6 +12,12 @@ type BootstrapState =
 
 export function App() {
   const [state, setState] = useState<BootstrapState>({ status: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+
+  const retryBootstrap = (): void => {
+    setState({ status: 'loading' });
+    setAttempt((value) => value + 1);
+  };
 
   useEffect(() => {
     platform.ready();
@@ -25,7 +31,7 @@ export function App() {
       })
       .catch((error: unknown) => {
         if (!active) return;
-        if (error instanceof ApiError && error.status === 401 && initData.length === 0) {
+        if (error instanceof ApiError && error.status === 401) {
           setState({ status: 'telegram-required' });
           return;
         }
@@ -35,11 +41,15 @@ export function App() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
 
   if (state.status === 'ready') {
     return (
-      <Play account={state.account} launchContext={parseLaunchParam(platform.launchParam())} />
+      <Play
+        account={state.account}
+        launchContext={parseLaunchParam(platform.launchParam())}
+        onSessionExpired={retryBootstrap}
+      />
     );
   }
 
@@ -47,7 +57,7 @@ export function App() {
     state.status === 'loading'
       ? 'Connecting to CARAVAN…'
       : state.status === 'telegram-required'
-        ? 'Open CARAVAN from Telegram to sign in.'
+        ? 'Open or reopen CARAVAN from Telegram to refresh your sign-in.'
         : 'Could not establish a CARAVAN session.';
 
   return (
@@ -56,6 +66,11 @@ export function App() {
         <p className="eyebrow">Trade routes. Real opponents.</p>
         <h1 id="caravan-title">CARAVAN</h1>
         <p className="status">{status}</p>
+        {state.status === 'error' && (
+          <button className="button" type="button" onClick={retryBootstrap}>
+            Retry connection
+          </button>
+        )}
       </section>
     </main>
   );
