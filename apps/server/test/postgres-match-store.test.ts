@@ -6,13 +6,7 @@ import {
   migrateDatabase,
   type AuthoritativeMatch,
 } from '../src/index.js';
-import {
-  ACCOUNT_A,
-  ACCOUNT_B,
-  MATCH_ID,
-  ZeroRandomSource,
-  gameplayCommand,
-} from './fixtures.js';
+import { ACCOUNT_A, ACCOUNT_B, MATCH_ID, ZeroRandomSource, gameplayCommand } from './fixtures.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (process.env.CARAVAN_REQUIRE_DATABASE_TESTS === '1' && databaseUrl === undefined) {

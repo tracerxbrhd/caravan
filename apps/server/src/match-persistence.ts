@@ -250,7 +250,8 @@ export function parsePersistedMatch(
 
   const envelope = persistedMatchEnvelopeSchema.parse(payload);
   const match = envelope.match;
-  if (match.id !== metadata.id) throw new Error('Persisted match id does not match its database row.');
+  if (match.id !== metadata.id)
+    throw new Error('Persisted match id does not match its database row.');
   if (match.stateVersion !== metadata.stateVersion) {
     throw new Error('Persisted match stateVersion does not match its database row.');
   }
