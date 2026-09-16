@@ -25,6 +25,7 @@ describe('client command contracts', () => {
     });
 
     expect(parsed.type).toBe('GAME_ACTION');
+    if (parsed.type !== 'GAME_ACTION') throw new Error('Expected gameplay command.');
     expect(parsed.expectedStateVersion).toBe(7);
   });
 
