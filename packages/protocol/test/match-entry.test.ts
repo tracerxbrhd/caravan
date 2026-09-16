@@ -5,6 +5,7 @@ import {
   createChallengeResponseSchema,
   inviteTokenSchema,
   matchmakingStatusSchema,
+  rematchStatusSchema,
 } from '../src/index.js';
 
 const MATCH_ID = '00000000-0000-4000-8000-000000000001';
@@ -66,6 +67,36 @@ describe('match entry protocol contracts', () => {
     ).toThrow();
     expect(() =>
       challengeViewSchema.parse({ ...challenge, unexpectedPrivilegedState: { hand: ['secret'] } }),
+    ).toThrow();
+  });
+
+  it('keeps rematch state explicit, player-relative and free of privileged match state', () => {
+    expect(rematchStatusSchema.parse({ status: 'IDLE' })).toEqual({ status: 'IDLE' });
+    expect(
+      rematchStatusSchema.parse({
+        status: 'WAITING',
+        requestedBy: 'OPPONENT',
+        expiresAtMs: 123_456,
+      }),
+    ).toEqual({ status: 'WAITING', requestedBy: 'OPPONENT', expiresAtMs: 123_456 });
+    expect(rematchStatusSchema.parse({ status: 'MATCH_FOUND', matchId: MATCH_ID })).toEqual({
+      status: 'MATCH_FOUND',
+      matchId: MATCH_ID,
+    });
+
+    expect(() =>
+      rematchStatusSchema.parse({
+        status: 'WAITING',
+        requestedBy: 'A',
+        expiresAtMs: 123_456,
+      }),
+    ).toThrow();
+    expect(() =>
+      rematchStatusSchema.parse({
+        status: 'MATCH_FOUND',
+        matchId: MATCH_ID,
+        opponentHand: ['secret'],
+      }),
     ).toThrow();
   });
 });
