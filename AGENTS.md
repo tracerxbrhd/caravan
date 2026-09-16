@@ -12,6 +12,10 @@ Before substantial changes:
 
 Accepted repository documentation is the long-term source of truth. Prefer newer and more specific accepted decisions when documents conflict. Direct instructions for the current task take precedence. Do not describe planned behavior as implemented.
 
+For gameplay behavior, `docs/product/05-game-rules.md` is normative until intentionally amended. Do not encode a different rule in UI, server code, protocol code, or tests without updating that document. `docs/product/06-first-playable-scope.md` defines the current vertical-slice boundary; deferred features must not quietly become blockers for the first playable.
+
+`docs/README.md` is the documentation map.
+
 ## README policy
 
 The repository root `README.md` is the public-facing front page of CARAVAN, not an internal technical document.
