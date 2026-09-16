@@ -4,7 +4,7 @@ type Seat = WirePlayerView['viewer'];
 
 export interface ServerClockAnchor {
   readonly serverTimeMs: number;
-  readonly clientTimeMs: number;
+  readonly clientMonotonicMs: number;
 }
 
 export interface MatchDeadlineNotice {
@@ -19,8 +19,8 @@ function opponentOf(seat: Seat): Seat {
   return seat === 'A' ? 'B' : 'A';
 }
 
-export function estimatedServerNow(anchor: ServerClockAnchor, clientNowMs: number): number {
-  return anchor.serverTimeMs + Math.max(0, clientNowMs - anchor.clientTimeMs);
+export function estimatedServerNow(anchor: ServerClockAnchor, clientMonotonicNowMs: number): number {
+  return anchor.serverTimeMs + Math.max(0, clientMonotonicNowMs - anchor.clientMonotonicMs);
 }
 
 export function remainingDeadlineSeconds(deadlineAtMs: number, serverNowMs: number): number {
