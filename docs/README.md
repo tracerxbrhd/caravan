@@ -25,6 +25,7 @@ The root `README.md` is intentionally product-facing. Internal technical detail 
 - [`architecture/07-durable-match-persistence.md`](architecture/07-durable-match-persistence.md) — PostgreSQL authoritative snapshots, persistence versioning, atomic CAS, retry durability, restart recovery, migrations, and local database containerization.
 - [`architecture/08-authenticated-server-runtime.md`](architecture/08-authenticated-server-runtime.md) — Fastify runtime, provider-independent accounts, Telegram `initData` verification, opaque PostgreSQL sessions, HTTP security baseline, and Mini App authentication bootstrap.
 - [`architecture/09-authenticated-realtime-runtime.md`](architecture/09-authenticated-realtime-runtime.md) — authenticated WebSocket transport, controlling connections, viewer-safe broadcast, reconnect/deadline lifecycle, and restart recovery.
+- [`architecture/10-match-entry.md`](architecture/10-match-entry.md) — durable casual matchmaking and private challenge entry, invite-token security, account-level concurrency, and authoritative match creation handoff.
 
 ## Development
 
