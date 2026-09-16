@@ -1,10 +1,20 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import {
+  PROTOCOL_VERSION,
   acceptedChallengeSchema,
   createChallengeResponseSchema,
   matchmakingStatusSchema,
+  rematchStatusSchema,
 } from '@caravan/protocol';
-import { SESSION_COOKIE_NAME, buildServer, createPool, migrateDatabase } from '../src/index.js';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  SESSION_COOKIE_NAME,
+  MatchService,
+  PostgresMatchStore,
+  buildServer,
+  createPool,
+  migrateDatabase,
+} from '../src/index.js';
 import { signedTelegramInitData, testConfig } from './auth-fixtures.js';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -54,14 +64,30 @@ describeDatabase('authenticated match entry routes', () => {
     return cookiePair(response.headers['set-cookie']);
   }
 
+  async function accountId(displayName: string): Promise<string> {
+    const row = (
+      await pool.query<{ id: string }>('SELECT id::text FROM accounts WHERE display_name = $1', [
+        displayName,
+      ])
+    ).rows[0];
+    if (row === undefined) throw new Error('Expected account.');
+    return row.id;
+  }
+
   it('requires an authenticated CARAVAN session for match entry', async () => {
     const matchmaking = await app.inject({ method: 'GET', url: '/api/matchmaking' });
     const challenge = await app.inject({ method: 'POST', url: '/api/challenges' });
+    const rematch = await app.inject({
+      method: 'GET',
+      url: '/api/matches/00000000-0000-4000-8000-000000000001/rematch',
+    });
 
     expect(matchmaking.statusCode).toBe(401);
     expect(matchmaking.json()).toEqual({ code: 'UNAUTHENTICATED' });
     expect(challenge.statusCode).toBe(401);
     expect(challenge.json()).toEqual({ code: 'UNAUTHENTICATED' });
+    expect(rematch.statusCode).toBe(401);
+    expect(rematch.json()).toEqual({ code: 'UNAUTHENTICATED' });
   });
 
   it('pairs two authenticated accounts through the casual HTTP API', async () => {
@@ -137,5 +163,61 @@ describeDatabase('authenticated match entry routes', () => {
       status: 'ACCEPTED',
       matchId: accepted.matchId,
     });
+  });
+
+  it('completes a rematch handshake through authenticated HTTP without exposing it to strangers', async () => {
+    const firstCookie = await authenticate(30_001, 'First');
+    const secondCookie = await authenticate(30_002, 'Second');
+    const strangerCookie = await authenticate(30_003, 'Stranger');
+    const first = await accountId('First');
+    const second = await accountId('Second');
+
+    const matches = new MatchService(new PostgresMatchStore(pool));
+    const { matchId } = await matches.createMatch({ participants: { A: first, B: second } });
+    await matches.handleCommand(first, {
+      protocolVersion: PROTOCOL_VERSION,
+      type: 'SURRENDER',
+      matchId,
+      commandId: randomUUID(),
+      expectedStateVersion: 0,
+    });
+
+    const hidden = await app.inject({
+      method: 'GET',
+      url: `/api/matches/${matchId}/rematch`,
+      headers: { cookie: strangerCookie },
+    });
+    expect(hidden.statusCode).toBe(404);
+    expect(hidden.json()).toEqual({ code: 'MATCH_NOT_FOUND' });
+
+    const request = await app.inject({
+      method: 'POST',
+      url: `/api/matches/${matchId}/rematch`,
+      headers: { cookie: firstCookie },
+    });
+    expect(request.statusCode).toBe(200);
+    expect(rematchStatusSchema.parse(request.json())).toMatchObject({
+      status: 'WAITING',
+      requestedBy: 'YOU',
+    });
+
+    const opponentStatus = await app.inject({
+      method: 'GET',
+      url: `/api/matches/${matchId}/rematch`,
+      headers: { cookie: secondCookie },
+    });
+    expect(opponentStatus.statusCode).toBe(200);
+    expect(rematchStatusSchema.parse(opponentStatus.json())).toMatchObject({
+      status: 'WAITING',
+      requestedBy: 'OPPONENT',
+    });
+
+    const accept = await app.inject({
+      method: 'POST',
+      url: `/api/matches/${matchId}/rematch`,
+      headers: { cookie: secondCookie },
+    });
+    expect(accept.statusCode).toBe(200);
+    expect(rematchStatusSchema.parse(accept.json()).status).toBe('MATCH_FOUND');
   });
 });
