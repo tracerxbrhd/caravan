@@ -2,9 +2,22 @@
 
 ## Status
 
-Accepted as the initial domain contract for the future `packages/game-engine` implementation. This is architecture documentation, not implemented code.
+Accepted as the CARAVAN game-domain contract and implemented in `packages/game-engine` for the deterministic rule surface described here.
 
-The canonical gameplay behavior remains defined by `docs/product/05-game-rules.md`. Domain types must make those rules explicit without embedding UI or transport concerns.
+The canonical gameplay behavior remains defined by `docs/product/05-game-rules.md`. Domain types make those rules explicit without embedding UI, transport, persistence, or server-lifecycle concerns.
+
+The current implemented engine surface includes:
+
+- deterministic `createGame(...)` initialization from server-supplied card order and starting seat;
+- discriminated `GameAction` types plus `legalActions(...)` / `isLegalAction(...)`;
+- immutable `applyAction(...)` transitions with stable rule-domain errors and explicit events;
+- route value/status, active suit, lane ownership, direction and destructive-removal helpers;
+- rule results for normal lane victory and deck exhaustion;
+- `stateInvariantViolations(...)` / `assertGameState(...)`;
+- explicit `projectForPlayer(...)` hidden-information projection;
+- schema-versioned in-memory engine state.
+
+Snapshot persistence/restore validation and migration are not implemented by this engine PR; those remain requirements for the persistence/server layer when durable matches are introduced.
 
 ## Goals
 
@@ -137,9 +150,9 @@ A route's value-card IDs must belong to that route's owning seat because value c
 
 `direction` is explicit because destructive effects can produce edge cases that are not safely reconstructable from a naive `last two cards` expression alone, including equal terminal ranks after an intervening card is removed.
 
-The engine must still validate that stored direction is consistent with the canonical recomputation algorithm.
+The engine validates stored direction against the canonical recomputation model wherever the current terminal ranks determine it unambiguously.
 
-Active suit should normally be derived from the terminal card/modifiers rather than stored independently unless implementation evidence shows a strong reason to persist it.
+Active suit is derived from the terminal card/modifiers rather than persisted independently.
 
 ## Modifier attachments
 
@@ -174,7 +187,7 @@ interface PlayerGameState {
 
 A player's draw pile, hand, and discard pile contain only cards whose immutable `owner` is that seat. Routes are different: their value cards belong to the route owner, but attached modifiers may be opponent-owned.
 
-The engine may use immutable-copy semantics or equivalent disciplined updates, but transitions must not depend on hidden global mutable state.
+Transitions use immutable-copy semantics from the public engine boundary and do not depend on hidden global mutable state.
 
 ## Match card registry
 
@@ -212,22 +225,22 @@ interface CaravanGameState {
 
 The accepted initialization contract guarantees that `activePlayer === startingPlayer` before the first opening action. Turn alternation then follows the canonical rule document; after six alternating opening actions, the starting player becomes the first normal-turn actor.
 
-`stateVersion` used for network concurrency belongs to the authoritative match/server envelope, not necessarily to pure game-rule state. Do not conflate transport/persistence versioning with game action sequence unless an accepted implementation decision intentionally unifies them.
+`stateVersion` used for network concurrency belongs to the authoritative match/server envelope, not to pure game-rule state. Do not conflate transport/persistence versioning with game action sequence.
 
 ## Rule-engine result versus server match result
 
-The pure game engine should only decide outcomes produced by card-game rules, such as:
+The pure game engine decides only outcomes produced by card-game rules:
 
 - normal route/lane victory;
 - deck exhaustion.
 
-Voluntary surrender, inactivity timeout, disconnect forfeiture, administrative abort, and infrastructure no-contest are server match-lifecycle outcomes. They should not be faked as `GameAction`s or encoded as card-rule transitions.
+Voluntary surrender, inactivity timeout, disconnect forfeiture, administrative abort, and infrastructure no-contest are server match-lifecycle outcomes. They are not `GameAction`s or card-rule transitions.
 
 The server may wrap a rule-engine `GameResult` in a broader persisted `MatchResult`/finish reason used by history and UI.
 
 ## Player actions
 
-Use a discriminated union, for example:
+The implemented public rule boundary uses a discriminated union:
 
 ```ts
 type GameAction =
@@ -255,13 +268,13 @@ type GameAction =
 
 Do not create a generic `{ type: string; payload: unknown }` rule boundary.
 
-The engine should expose either `legalActions(state, seat)` or focused legal-target helpers derived from the same rules used by validation. Client highlighting must not be maintained as a separate handwritten rules implementation.
+`legalActions(state, seat)` and `isLegalAction(...)` are derived from the same rule helpers used by transition validation. Client highlighting must not become a separate handwritten rules implementation.
 
 Surrender is intentionally absent from `GameAction`; it belongs to server lifecycle commands.
 
 ## Engine transition contract
 
-A useful high-level shape is:
+The implemented high-level shape is:
 
 ```ts
 interface TransitionResult {
@@ -276,46 +289,44 @@ function applyAction(
 ): TransitionResult;
 ```
 
-Invalid actions should fail with stable domain error codes, not presentation strings.
+Invalid actions fail with stable `GameRuleError` codes rather than presentation strings.
 
 Events are useful for animation/audit semantics but the engine does not own WebSocket broadcasting or persistence.
 
 ## Game events
 
-Examples of domain events that may be useful:
+The engine currently emits explicit events for:
 
 - `CARD_PLAYED`;
-- `CARD_DRAWN` (private identity visibility);
-- `CARD_DISCARDED` (public identity once discarded);
+- `CARD_DRAWN`;
+- `CARD_DISCARDED`;
 - `MODIFIER_ATTACHED`;
 - `CARDS_REMOVED`;
 - `ROUTE_DISBANDED`;
-- `ROUTE_STATUS_CHANGED`;
 - `TURN_CHANGED`;
 - `GAME_FINISHED`.
 
-Event visibility must be explicit. A private draw event may contain a card identity for one player while the opponent-visible representation contains only hand/deck count changes. A discard/removal event may reveal identities that became public by rule.
+Event visibility is explicit. A private draw event contains a card identity only for its player; public actions expose identities as appropriate.
 
-Do not broadcast raw engine events blindly if they contain hidden information.
+Do not broadcast raw engine events blindly. The future protocol/server layer must preserve visibility semantics and may transform events into viewer-specific wire messages.
 
 ## Derived route evaluation
 
-The engine should centralize pure helpers such as:
+The engine centralizes pure helpers including:
 
 ```ts
-routeValue(route)
-effectiveDirection(route, previousDirectionContext?)
-activeSuit(route)
-routeStatus(route)
+routeValue(route, cards)
+activeSuit(route, cards)
+routeStatus(route, cards)
 laneOwner(state, routeIndex)
-gameResult(state)
+normalRouteWinner(state)
 ```
 
 There must be one implementation of these rules. Server, protocol, and React components should not recalculate them independently.
 
 ## Destructive effects and discard routing
 
-Jack/Joker removals should be expressed as deterministic transformations over concrete card IDs.
+Jack/Joker removals are deterministic transformations over concrete card IDs.
 
 After removal:
 
@@ -327,23 +338,21 @@ After removal:
 
 The same ownership routing applies when a route is disbanded. A single disband operation may therefore update both players' discard piles when opponent-owned modifiers were attached to the route.
 
-Tests must include removals of:
+Regression tests include:
 
-- terminal cards;
-- internal cards;
-- cards carrying Kings;
-- cards carrying Queens;
-- cards carrying Jokers;
-- an opponent-owned modifier attached to the acting player's route;
-- multiple same-rank/same-suit cards removed across both players;
-- a removal that leaves equal terminal ranks;
-- a removal that empties a route.
+- terminal/internal destructive removals;
+- cards carrying modifiers;
+- opponent-owned modifiers attached across routes;
+- Joker removal across both players by suit and by rank;
+- removal that leaves equal terminal ranks;
+- a Queen-bearing internal card becoming terminal again;
+- removal that empties a route.
 
 ## Authoritative state versus PlayerView
 
 `CaravanGameState` is privileged server state and must never be serialized wholesale to a client.
 
-Create an explicit projection boundary, conceptually:
+The implemented projection boundary is:
 
 ```ts
 function projectForPlayer(
@@ -352,16 +361,16 @@ function projectForPlayer(
 ): PlayerView;
 ```
 
-A `PlayerView` may contain:
+A `PlayerView` contains:
 
 - the viewer's exact hand;
-- all public table cards/modifiers and their original owners where relevant;
+- all public table cards/modifiers and their original owners;
 - public route values/status/ownership;
 - opponent hand size, not opponent hand identities;
 - both remaining deck counts, not either future deck order;
 - both public discard piles and discarded card identities/order;
 - active player/phase/result;
-- legal actions or legal-target hints for the viewer where useful.
+- legal actions for the viewer when they are the active player.
 
 It must not contain:
 
@@ -371,33 +380,32 @@ It must not contain:
 - private server RNG material;
 - other server-only audit/identity data.
 
-Projection tests are security tests, not merely serialization tests.
+Projection is covered by focused and property-based security tests.
 
 ## Serialization
 
-Snapshots require a schema version and strict validation on restore.
+Engine state carries a schema version, but durable snapshot parsing/restoration is intentionally deferred until the persistence layer exists.
 
-Never trust `JSON.parse(...) as CaravanGameState` without runtime validation.
-
-Migrations or explicit legacy deserializers should handle old snapshot schemas when the format changes after persisted matches exist.
+When persistence is introduced, never trust `JSON.parse(...) as CaravanGameState` without runtime validation. Migrations or explicit legacy deserializers should handle old snapshot schemas when persisted format changes.
 
 ## Determinism
 
 Given the same:
 
-- valid initial deck definitions;
-- instantiated card ownership/identities;
+- valid initial card instances and ownership;
 - injected shuffled orders;
 - injected starting player;
 - action sequence;
 
-…the engine must produce the same resulting state and domain events.
+…the engine produces the same resulting state and domain events.
 
 Wall-clock timestamps, random generation, database queries, network state, animation timing, and Telegram context are forbidden inputs to rule transitions.
 
-## Invariants worth property-testing
+## Invariants and property tests
 
-At minimum:
+`assertGameState(...)` / `stateInvariantViolations(...)` enforce the central structural invariants, while fast-check generates arbitrary legal action sequences and verifies that transitions preserve them.
+
+Covered invariants include:
 
 - every live `CardId` exists in the match registry exactly once;
 - every card instance occupies exactly one gameplay location at a time;
@@ -409,9 +417,10 @@ At minimum:
 - route attachment count never exceeds three;
 - a modifier never exists unattached on a route;
 - Jacks never persist on the table after resolution;
-- route values are non-negative and derived from surviving cards only;
+- route values are derived from surviving cards only;
 - a finished rule-engine game has exactly one winner;
-- a normal finished game gives at least two of three lanes to the winner;
 - hidden-information projection never exposes forbidden card IDs;
-- legal-action generation and `applyAction` agree;
-- duplicate application is prevented by the server command layer, not by mutating engine semantics.
+- generated legal actions are accepted by `applyAction`;
+- public transitions do not mutate their input state.
+
+Duplicate network-command application remains the responsibility of the future server command layer, not the engine action semantics.
