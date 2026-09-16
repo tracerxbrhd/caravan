@@ -27,6 +27,7 @@ The root `README.md` is intentionally product-facing. Internal technical detail 
 - [`architecture/09-authenticated-realtime-runtime.md`](architecture/09-authenticated-realtime-runtime.md) — authenticated WebSocket transport, controlling connections, viewer-safe broadcast, reconnect/deadline lifecycle, and restart recovery.
 - [`architecture/10-match-entry.md`](architecture/10-match-entry.md) — durable casual matchmaking and private challenge entry, invite-token security, account-level concurrency, and authoritative match creation handoff.
 - [`architecture/11-telegram-entry.md`](architecture/11-telegram-entry.md) — thin Telegram webhook runtime, Mini App launch/deep-link context, invite-token transport boundary, and deployment routing direction.
+- [`architecture/12-miniapp-play-flow.md`](architecture/12-miniapp-play-flow.md) — Mini App launch context, match-entry orchestration, private sharing, and authoritative realtime/resync client.
 
 ## Development
 

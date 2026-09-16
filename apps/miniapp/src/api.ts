@@ -1,6 +1,25 @@
+import {
+  acceptedChallengeSchema,
+  challengeResolutionSchema,
+  challengeViewSchema,
+  createChallengeResponseSchema,
+  matchmakingStatusSchema,
+  type AcceptedChallenge,
+  type ChallengeId,
+  type ChallengeResolution,
+  type ChallengeView,
+  type CreateChallengeResponse,
+  type InviteToken,
+  type MatchmakingStatus,
+} from '@caravan/protocol';
+
 export interface AccountProfile {
   id: string;
   displayName: string;
+}
+
+interface RuntimeSchema<T> {
+  parse(input: unknown): T;
 }
 
 export class ApiError extends Error {
@@ -12,7 +31,13 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export class ResponseValidationError extends Error {
+  public constructor() {
+    super('INVALID_SERVER_RESPONSE');
+  }
+}
+
+async function request(path: string, init?: RequestInit): Promise<unknown> {
   const response = await fetch(path, {
     ...init,
     credentials: 'include',
@@ -22,7 +47,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
 
-  const payload = (await response.json()) as unknown;
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new ResponseValidationError();
+  }
+
   if (!response.ok) {
     const code =
       typeof payload === 'object' &&
@@ -33,18 +64,95 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         : 'REQUEST_FAILED';
     throw new ApiError(response.status, code);
   }
-  return payload as T;
+  return payload;
 }
 
-export function currentAccount(): Promise<AccountProfile> {
-  return request<AccountProfile>('/api/me');
+async function requestParsed<T>(
+  path: string,
+  schema: RuntimeSchema<T>,
+  init?: RequestInit,
+): Promise<T> {
+  const payload = await request(path, init);
+  try {
+    return schema.parse(payload);
+  } catch {
+    throw new ResponseValidationError();
+  }
 }
 
-export function authenticateTelegram(initData: string): Promise<AccountProfile> {
-  return request<AccountProfile>('/api/auth/telegram', {
+function parseAccountProfile(payload: unknown): AccountProfile {
+  if (
+    typeof payload !== 'object' ||
+    payload === null ||
+    !('id' in payload) ||
+    typeof payload.id !== 'string' ||
+    !('displayName' in payload) ||
+    typeof payload.displayName !== 'string'
+  ) {
+    throw new ResponseValidationError();
+  }
+  return { id: payload.id, displayName: payload.displayName };
+}
+
+export async function currentAccount(): Promise<AccountProfile> {
+  return parseAccountProfile(await request('/api/me'));
+}
+
+export async function authenticateTelegram(initData: string): Promise<AccountProfile> {
+  return parseAccountProfile(
+    await request('/api/auth/telegram', {
+      method: 'POST',
+      body: JSON.stringify({ initData }),
+    }),
+  );
+}
+
+export function matchmakingStatus(): Promise<MatchmakingStatus> {
+  return requestParsed('/api/matchmaking', matchmakingStatusSchema);
+}
+
+export function joinMatchmaking(): Promise<MatchmakingStatus> {
+  return requestParsed('/api/matchmaking/join', matchmakingStatusSchema, { method: 'POST' });
+}
+
+export function heartbeatMatchmaking(): Promise<MatchmakingStatus> {
+  return requestParsed('/api/matchmaking/heartbeat', matchmakingStatusSchema, { method: 'POST' });
+}
+
+export function leaveMatchmaking(): Promise<MatchmakingStatus> {
+  return requestParsed('/api/matchmaking', matchmakingStatusSchema, { method: 'DELETE' });
+}
+
+export function createChallenge(): Promise<CreateChallengeResponse> {
+  return requestParsed('/api/challenges', createChallengeResponseSchema, { method: 'POST' });
+}
+
+export function challengeStatus(challengeId: ChallengeId): Promise<ChallengeView> {
+  return requestParsed(`/api/challenges/${encodeURIComponent(challengeId)}`, challengeViewSchema);
+}
+
+export function acceptChallenge(inviteToken: InviteToken): Promise<AcceptedChallenge> {
+  return requestParsed('/api/challenges/accept', acceptedChallengeSchema, {
     method: 'POST',
-    body: JSON.stringify({ initData }),
+    body: JSON.stringify({ inviteToken }),
   });
+}
+
+export function declineChallenge(inviteToken: InviteToken): Promise<ChallengeResolution> {
+  return requestParsed('/api/challenges/decline', challengeResolutionSchema, {
+    method: 'POST',
+    body: JSON.stringify({ inviteToken }),
+  });
+}
+
+export function cancelChallenge(challengeId: ChallengeId): Promise<ChallengeResolution> {
+  return requestParsed(
+    `/api/challenges/${encodeURIComponent(challengeId)}/cancel`,
+    challengeResolutionSchema,
+    {
+      method: 'POST',
+    },
+  );
 }
 
 let bootstrapPromise: Promise<AccountProfile> | undefined;
