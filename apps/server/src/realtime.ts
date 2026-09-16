@@ -353,7 +353,10 @@ export async function installRealtimeRuntime(
             await releaseControl(connection, !shuttingDown);
           })
           .catch((error: unknown) => {
-            app.log.error({ err: error, connectionId: connection.id }, 'Realtime disconnect failed');
+            app.log.error(
+              { err: error, connectionId: connection.id },
+              'Realtime disconnect failed',
+            );
           });
       });
     },

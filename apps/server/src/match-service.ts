@@ -251,8 +251,7 @@ export class MatchService {
 
       const reconnectDeadlineAtMs = {
         ...match.reconnectDeadlineAtMs,
-        [seat]:
-          match.turnDeadlineAtMs === null ? null : this.#now() + this.#reconnectGraceMs,
+        [seat]: match.turnDeadlineAtMs === null ? null : this.#now() + this.#reconnectGraceMs,
       };
       const next: AuthoritativeMatch = {
         ...match,
@@ -383,9 +382,7 @@ export class MatchService {
           : match.turnDeadlineAtMs === null
             ? null
             : this.#now() + this.#turnTimeoutMs,
-        reconnectDeadlineAtMs: finished
-          ? { A: null, B: null }
-          : match.reconnectDeadlineAtMs,
+        reconnectDeadlineAtMs: finished ? { A: null, B: null } : match.reconnectDeadlineAtMs,
         processedCommands: [...match.processedCommands, record],
       };
 
@@ -514,7 +511,9 @@ export class MatchService {
     if (candidates.length === 0) return null;
     const earliest = Math.min(...candidates.map((candidate) => candidate.atMs));
     const losers = new Set(
-      candidates.filter((candidate) => candidate.atMs === earliest).map((candidate) => candidate.loser),
+      candidates
+        .filter((candidate) => candidate.atMs === earliest)
+        .map((candidate) => candidate.loser),
     );
     if (losers.size !== 1) return { reason: 'NO_CONTEST', winner: null };
 

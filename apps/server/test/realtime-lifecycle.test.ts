@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  InMemoryMatchStore,
-  MatchService,
-  type MatchRandomSource,
-} from '../src/index.js';
+import { InMemoryMatchStore, MatchService, type MatchRandomSource } from '../src/index.js';
 
 const MATCH_ID = '00000000-0000-4000-8000-000000000008';
 const ACCOUNT_A = 'account-a';

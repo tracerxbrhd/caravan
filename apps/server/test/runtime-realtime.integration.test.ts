@@ -83,7 +83,9 @@ describeDatabase('authenticated realtime runtime', () => {
   });
 
   beforeEach(async () => {
-    await pool.query('TRUNCATE TABLE caravan_matches, sessions, account_identities, accounts CASCADE');
+    await pool.query(
+      'TRUNCATE TABLE caravan_matches, sessions, account_identities, accounts CASCADE',
+    );
   });
 
   afterAll(async () => {
