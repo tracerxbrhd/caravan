@@ -11,6 +11,7 @@ import {
   type MatchConnectionState,
   type MatchRealtimeConnection,
 } from './realtime.js';
+import { RulesGuide } from './RulesGuide.js';
 
 function connectionLabel(state: MatchConnectionState): string {
   switch (state) {
@@ -39,6 +40,7 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(null);
   const [rejection, setRejection] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const realtime = useRef<MatchRealtimeConnection | null>(null);
 
   useEffect(() => {
@@ -101,6 +103,13 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
             <h1 id="match-title">CARAVAN</h1>
           </div>
           <div className="match-header__status">
+            <button
+              type="button"
+              className="button button--quiet rules-help-button"
+              onClick={() => setRulesOpen(true)}
+            >
+              How to play
+            </button>
             {snapshot !== null && (
               <span className="state-version" title="Authoritative state version">
                 v{snapshot.stateVersion}
@@ -161,6 +170,8 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
           </>
         )}
       </section>
+
+      {rulesOpen && <RulesGuide onClose={() => setRulesOpen(false)} />}
     </main>
   );
 }
