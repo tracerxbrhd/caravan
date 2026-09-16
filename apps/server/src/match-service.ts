@@ -309,13 +309,14 @@ export class MatchService {
     retryable: boolean,
     gameErrorCode: GameRuleErrorCode | null,
   ): ServerMessage {
+    const visibleStateVersion = match !== null && viewer !== null ? match.stateVersion : 0;
     const base = {
       protocolVersion: PROTOCOL_VERSION,
       type: 'COMMAND_REJECTED' as const,
       serverTimeMs: this.#now(),
       matchId: command.matchId,
       commandId: command.commandId,
-      stateVersion: match?.stateVersion ?? 0,
+      stateVersion: visibleStateVersion,
       code,
       retryable,
       gameErrorCode,
