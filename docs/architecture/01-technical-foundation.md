@@ -4,7 +4,7 @@
 
 Accepted as the initial architecture direction. The repository scaffold implements the agreed pnpm/TypeScript monorepo boundaries; concrete runtime behavior is added only through focused changes.
 
-As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The deterministic game engine is implemented and `packages/protocol` now implements the initial typed/runtime-validated wire contracts. The Mini App remains a minimal React/Vite shell, while bot and server runtime behavior remain intentionally unimplemented rather than represented by fake placeholders.
+As of 2026-09-16, `apps/miniapp`, `apps/bot`, `apps/server`, `packages/game-engine`, and `packages/protocol` exist as buildable workspace packages. The deterministic game engine, typed/runtime-validated protocol contracts, and the initial authoritative match-service domain layer are implemented. The Mini App remains a minimal React/Vite shell, while bot runtime, network transport, authentication, durable persistence, and production backend composition remain intentionally unimplemented rather than represented by fake placeholders.
 
 ## Reference architecture
 
@@ -79,9 +79,15 @@ Use strict types and discriminated unions for actions/events rather than generic
 - match result/finalization;
 - future rating/progression/economy effects.
 
+The initial match-service implementation now owns secure starter-deck shuffle/mulligan, starting-seat selection, authoritative match state, `stateVersion`, command idempotency, stale rejection, game-engine application, lifecycle finalization, and per-player snapshot projection.
+
+Its current storage adapter is intentionally in-memory and non-durable. PostgreSQL, restart recovery, network transport, authentication, connection ownership, reconnect/deadline scheduling, and matchmaking remain later focused layers.
+
 The server must never accept client-provided game state as authoritative.
 
 A modular monolith is preferred initially. Do not add microservices, Redis, queues, Kafka/RabbitMQ, Kubernetes, or distributed coordination infrastructure without an objective need.
+
+See [`06-authoritative-match-service.md`](06-authoritative-match-service.md) for the implemented service boundary and concurrency contract.
 
 ## Protocol
 
@@ -100,6 +106,8 @@ PostgreSQL is the intended durable source of truth unless an accepted architectu
 Use internal domain account IDs. Telegram user IDs belong to external identity records and must not become gameplay ownership keys.
 
 Authoritative active-match state may be stored as a versioned snapshot suitable for recovery after a normal process/container restart. Complex game state should not be decomposed into relational rows merely to make the schema look normalized when JSONB is the better persistence boundary.
+
+The current `MatchStore` interface is a deliberate persistence seam. A PostgreSQL implementation must preserve its compare-and-set state-version semantics transactionally and must persist processed command identity strongly enough for retry idempotency and recovery.
 
 ## Client
 
