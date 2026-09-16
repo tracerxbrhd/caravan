@@ -2,16 +2,21 @@ import type {
   CommandRejectionCode,
   MatchId,
   MatchSnapshot,
+  RematchStatus,
   WireGameAction,
 } from '@caravan/protocol';
 import { useEffect, useRef, useState } from 'react';
+import { ApiError, cancelRematch, rematchStatus, requestRematch } from './api.js';
 import { CardTable } from './CardTable.js';
+import { MatchResult } from './MatchResult.js';
 import {
   connectMatch,
   type MatchConnectionState,
   type MatchRealtimeConnection,
 } from './realtime.js';
 import { RulesGuide } from './RulesGuide.js';
+
+const IDLE_REMATCH: RematchStatus = { status: 'IDLE' };
 
 function connectionLabel(state: MatchConnectionState): string {
   switch (state) {
@@ -35,15 +40,43 @@ function rejectionLabel(code: CommandRejectionCode): string {
   return 'The server rejected the last match command.';
 }
 
-export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): void }) {
+function rematchErrorLabel(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.code === 'REMATCH_UNAVAILABLE') {
+      return 'This opponent is no longer available for a rematch.';
+    }
+    if (error.code === 'REMATCH_NOT_ALLOWED') return 'This match cannot be replayed yet.';
+    if (error.code === 'MATCH_NOT_FOUND') return 'The finished match could not be restored.';
+  }
+  return 'CARAVAN could not update the rematch request.';
+}
+
+export function MatchSession({
+  matchId,
+  onExit,
+  onRematch,
+}: {
+  matchId: MatchId;
+  onExit(): void;
+  onRematch(matchId: MatchId): void;
+}) {
   const [connectionState, setConnectionState] = useState<MatchConnectionState>('CONNECTING');
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(null);
   const [rejection, setRejection] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [rematch, setRematch] = useState<RematchStatus>(IDLE_REMATCH);
+  const [rematchBusy, setRematchBusy] = useState(false);
+  const [rematchError, setRematchError] = useState<string | null>(null);
   const realtime = useRef<MatchRealtimeConnection | null>(null);
+  const onRematchRef = useRef(onRematch);
+  onRematchRef.current = onRematch;
 
   useEffect(() => {
+    setSnapshot(null);
+    setRematch(IDLE_REMATCH);
+    setRematchError(null);
+    setRematchBusy(false);
     const connection = connectMatch(matchId, {
       onConnectionState: (state) => {
         setConnectionState(state);
@@ -70,6 +103,36 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
     };
   }, [matchId]);
 
+  useEffect(() => {
+    if (snapshot?.status !== 'FINISHED') return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const poll = async (): Promise<void> => {
+      try {
+        const status = await rematchStatus(matchId);
+        if (!active) return;
+        setRematch(status);
+        setRematchError(null);
+        if (status.status === 'MATCH_FOUND') {
+          onRematchRef.current(status.matchId);
+          return;
+        }
+        timer = setTimeout(() => void poll(), 2_000);
+      } catch (error) {
+        if (!active) return;
+        setRematchError(rematchErrorLabel(error));
+        timer = setTimeout(() => void poll(), 4_000);
+      }
+    };
+
+    void poll();
+    return () => {
+      active = false;
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [matchId, snapshot?.status]);
+
   const submitAction = (action: WireGameAction): boolean => {
     if (pending) return false;
     const sent = realtime.current?.sendAction(action) ?? false;
@@ -92,6 +155,26 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
       setRejection('The match connection is not ready to surrender yet.');
     }
     return sent;
+  };
+
+  const askForRematch = (): void => {
+    if (rematchBusy || rematch.status === 'MATCH_FOUND') return;
+    setRematchBusy(true);
+    setRematchError(null);
+    void requestRematch(matchId)
+      .then((status) => {
+        setRematch(status);
+        if (status.status === 'MATCH_FOUND') onRematchRef.current(status.matchId);
+      })
+      .catch((error: unknown) => setRematchError(rematchErrorLabel(error)))
+      .finally(() => setRematchBusy(false));
+  };
+
+  const leaveMatch = (): void => {
+    if (snapshot?.status === 'FINISHED') {
+      void cancelRematch(matchId).catch(() => undefined);
+    }
+    onExit();
   };
 
   return (
@@ -152,20 +235,14 @@ export function MatchSession({ matchId, onExit }: { matchId: MatchId; onExit(): 
             )}
 
             {snapshot.status === 'FINISHED' && (
-              <section className="panel match-result">
-                <span className="section-kicker">Final result</span>
-                <h2>
-                  {snapshot.result?.winner === null
-                    ? 'No contest'
-                    : snapshot.result?.winner === snapshot.game.viewer
-                      ? 'You won the route.'
-                      : 'Opponent won the route.'}
-                </h2>
-                <p className="muted">Finish reason: {snapshot.result?.reason ?? 'complete'}.</p>
-                <button className="button button--primary" onClick={onExit}>
-                  Return to Play
-                </button>
-              </section>
+              <MatchResult
+                snapshot={snapshot}
+                rematch={rematch}
+                rematchBusy={rematchBusy}
+                rematchError={rematchError}
+                onRematch={askForRematch}
+                onExit={leaveMatch}
+              />
             )}
           </>
         )}
