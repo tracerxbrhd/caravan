@@ -14,7 +14,8 @@ export class ZeroRandomSource implements MatchRandomSource {
     return MATCH_ID;
   }
 
-  public nextInt(_maxExclusive: number): number {
+  public nextInt(maxExclusive: number): number {
+    if (maxExclusive <= 0) throw new RangeError('Expected a positive exclusive bound.');
     return 0;
   }
 }
