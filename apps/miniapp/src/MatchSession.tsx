@@ -8,6 +8,8 @@ import type {
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, cancelRematch, rematchStatus, requestRematch } from './api.js';
 import { CardTable } from './CardTable.js';
+import type { ServerClockAnchor } from './deadlines.js';
+import { MatchDeadlines } from './MatchDeadlines.js';
 import { MatchResult } from './MatchResult.js';
 import {
   connectMatch,
@@ -26,7 +28,7 @@ function connectionLabel(state: MatchConnectionState): string {
     case 'RECONNECTING':
       return 'Reconnecting…';
     case 'STOPPED':
-      return 'Closed';
+      return 'Paused';
     default:
       return 'Connecting…';
   }
@@ -37,7 +39,12 @@ function rejectionLabel(code: CommandRejectionCode): string {
   if (code === 'MATCH_NOT_READY') return 'Waiting for the opponent to connect.';
   if (code === 'STALE_STATE_VERSION') return 'The table changed. Fresh server state restored.';
   if (code === 'ILLEGAL_ACTION') return 'That move is no longer legal. Choose again.';
+  if (code === 'NOT_ACTIVE_PLAYER') return 'The turn has already passed to your opponent.';
+  if (code === 'MATCH_FINISHED') return 'This match has already finished.';
   if (code === 'DEADLINE_EXPIRED') return 'The server deadline expired before that move arrived.';
+  if (code === 'DUPLICATE_COMMAND') return 'That command was already processed.';
+  if (code === 'MATCH_NOT_FOUND') return 'This match is no longer available.';
+  if (code === 'NOT_MATCH_PLAYER') return 'This account is not a participant in this match.';
   return 'The server rejected the last match command.';
 }
 
@@ -52,17 +59,24 @@ function rematchErrorLabel(error: unknown): string {
   return 'CARAVAN could not update the rematch request.';
 }
 
+function isSessionExpired(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
+}
+
 export function MatchSession({
   matchId,
   onExit,
   onRematch,
+  onSessionExpired,
 }: {
   matchId: MatchId;
   onExit(): void;
   onRematch(matchId: MatchId): void;
+  onSessionExpired(): void;
 }) {
   const [connectionState, setConnectionState] = useState<MatchConnectionState>('CONNECTING');
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(null);
+  const [clockAnchor, setClockAnchor] = useState<ServerClockAnchor | null>(null);
   const [rejection, setRejection] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -71,11 +85,14 @@ export function MatchSession({
   const [rematchError, setRematchError] = useState<string | null>(null);
   const realtime = useRef<MatchRealtimeConnection | null>(null);
   const onRematchRef = useRef(onRematch);
+  const onSessionExpiredRef = useRef(onSessionExpired);
   onRematchRef.current = onRematch;
+  onSessionExpiredRef.current = onSessionExpired;
 
   useEffect(() => {
     setConnectionState('CONNECTING');
     setSnapshot(null);
+    setClockAnchor(null);
     setRematch(IDLE_REMATCH);
     setRematchError(null);
     setRematchBusy(false);
@@ -84,7 +101,8 @@ export function MatchSession({
         setConnectionState(state);
         if (state !== 'ONLINE') setPending(false);
       },
-      onSnapshot: (next) => {
+      onSnapshot: (next, serverTimeMs) => {
+        setClockAnchor({ serverTimeMs, clientTimeMs: Date.now() });
         commitPresentationUpdate(() => setSnapshot(next));
         setPending(false);
         setRejection(null);
@@ -96,6 +114,14 @@ export function MatchSession({
       onProtocolError: () => {
         setPending(false);
         setRejection('Realtime data could not be validated. Reconnecting…');
+      },
+      onConnectionStopped: (reason) => {
+        setPending(false);
+        if (reason === 'SESSION_EXPIRED') {
+          onSessionExpiredRef.current();
+          return;
+        }
+        setRejection('Another window took match control.');
       },
     });
     realtime.current = connection;
@@ -123,6 +149,10 @@ export function MatchSession({
         timer = setTimeout(() => void poll(), 2_000);
       } catch (error) {
         if (!active) return;
+        if (isSessionExpired(error)) {
+          onSessionExpiredRef.current();
+          return;
+        }
         setRematchError(rematchErrorLabel(error));
         timer = setTimeout(() => void poll(), 4_000);
       }
@@ -168,7 +198,13 @@ export function MatchSession({
         setRematch(status);
         if (status.status === 'MATCH_FOUND') onRematchRef.current(status.matchId);
       })
-      .catch((error: unknown) => setRematchError(rematchErrorLabel(error)))
+      .catch((error: unknown) => {
+        if (isSessionExpired(error)) {
+          onSessionExpiredRef.current();
+          return;
+        }
+        setRematchError(rematchErrorLabel(error));
+      })
       .finally(() => setRematchBusy(false));
   };
 
@@ -218,6 +254,7 @@ export function MatchSession({
           </section>
         ) : (
           <>
+            <MatchDeadlines snapshot={snapshot} clockAnchor={clockAnchor} />
             <CardTable
               snapshot={snapshot}
               connectionReady={connectionState === 'ONLINE'}
