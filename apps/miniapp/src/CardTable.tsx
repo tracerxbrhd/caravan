@@ -1,6 +1,10 @@
 import type { MatchSnapshot, WireGameAction, WirePlayerView } from '@caravan/protocol';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { playConfirmedFeedback, playSelectionFeedback, unlockPresentationAudio } from './feedback.js';
+import {
+  playConfirmedFeedback,
+  playSelectionFeedback,
+  unlockPresentationAudio,
+} from './feedback.js';
 import { platform } from './platform.js';
 import {
   cardTransitionName,
@@ -176,7 +180,13 @@ function PlayingCard({
   );
 }
 
-function DiscardPile({ cards, label }: { readonly cards: readonly PublicCard[]; readonly label: string }) {
+function DiscardPile({
+  cards,
+  label,
+}: {
+  readonly cards: readonly PublicCard[];
+  readonly label: string;
+}) {
   const visibleCards = cards.slice(-3);
   return (
     <div className="discard-pile" aria-label={`${label} discard pile, ${cards.length} cards`}>
@@ -399,7 +409,9 @@ export function CardTable({
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [confirmDisband, setConfirmDisband] = useState<RouteIndex | null>(null);
   const [confirmSurrender, setConfirmSurrender] = useState(false);
-  const [preferences, setPreferences] = useState<PresentationPreferences>(loadPresentationPreferences);
+  const [preferences, setPreferences] = useState<PresentationPreferences>(
+    loadPresentationPreferences,
+  );
   const preferencesRef = useRef(preferences);
   const previousSnapshot = useRef<MatchSnapshot | null>(null);
   preferencesRef.current = preferences;
