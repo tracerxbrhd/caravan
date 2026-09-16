@@ -109,7 +109,10 @@ export class TelegramClient implements TelegramMessenger, TelegramProductionAdmi
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
-  private async call(method: string, body: Readonly<Record<string, unknown>> = {}): Promise<unknown> {
+  private async call(
+    method: string,
+    body: Readonly<Record<string, unknown>> = {},
+  ): Promise<unknown> {
     let response: Response;
     try {
       response = await this.fetchImpl(`${this.apiRoot}/${method}`, {
