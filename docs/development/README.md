@@ -25,12 +25,12 @@ Do not implement a gameplay behavior that contradicts `product/05-game-rules.md`
 
 ## Toolchain
 
-The initial verified baseline intentionally follows the known-good UNDERGAMMON family rather than chasing every newest major release during bootstrap:
+The initial verified baseline follows the proven UNDERGAMMON architecture/tooling direction while using supported current majors for this new repository:
 
 - Node.js 24;
 - pnpm 12.4.1;
 - TypeScript 5.9;
-- ESLint 9 with `typescript-eslint`;
+- ESLint 10 with `typescript-eslint`;
 - Prettier 3;
 - Vitest 4;
 - React 19 + Vite 8 for the Mini App shell.
@@ -90,7 +90,7 @@ At scaffold stage Vitest is configured to allow zero tests; substantive tests be
 
 ## CI
 
-`.github/workflows/ci.yml` runs on pull requests and pushes to `main` using Node.js 24. The required verification sequence is install, build, lint, formatting check, strict typecheck, tests, and a production dependency audit.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main` using Node.js 24. The required verification sequence is frozen dependency install, build, lint, formatting check, strict typecheck, tests, and a production dependency audit.
 
 CI should grow only when the corresponding implementation exists. PostgreSQL services, Playwright, Docker validation, migrations, and deployment checks belong in later PRs that actually introduce those capabilities.
 
