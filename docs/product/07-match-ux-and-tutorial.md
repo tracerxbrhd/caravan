@@ -27,7 +27,7 @@ The match screen should prioritize, in order:
 3. the player's hand;
 4. turn/pending-action state;
 5. opponent hand/deck public counts;
-6. secondary controls such as discard/disband/help/settings.
+6. public discard information and secondary controls such as discard/disband/help/settings.
 
 The layout must remain understandable in portrait Telegram WebViews without requiring desktop-scale space.
 
@@ -106,9 +106,13 @@ Kings, Queens, and Jokers should visually attach beside/overlap their target val
 
 The target relationship must remain legible after several cards and modifiers accumulate.
 
+If an opponent-owned modifier is attached to one of the player's routes, ownership should remain visually understandable where needed without adding noisy permanent labels to every card.
+
 ### Jack/removal
 
 The player should see the Jack reach its target, then the target card group leave the route together. Do not make cards disappear without showing what was removed.
+
+Removed cards route to their original owners' public discard piles. Presentation should not imply that attacking or disbanding transfers ownership of those cards.
 
 ### Joker multi-removal
 
@@ -116,9 +120,15 @@ When one Joker removes matching cards across multiple routes, communicate the ca
 
 A short pulse/highlight over all affected targets followed by grouped removal is preferred over serial multi-second animations.
 
+### Direct discard
+
+Discarding from hand is a public action once accepted. The discarded card should become visible as it moves into the player's discard pile rather than remaining hidden after leaving the hand.
+
 ### Route disband
 
 Cards should collapse/sweep toward discard in one clear motion, preserving the meaning that the entire route was intentionally abandoned.
+
+When the route contains opponent-owned modifiers, the animation may split cards toward their respective owners' discard areas or use another concise treatment that preserves original ownership without slowing the turn excessively.
 
 ## Timing
 
@@ -143,7 +153,7 @@ Avoid excessive permanent badges. Prefer table composition, compact counters, an
 
 A route entering 21-26 may receive a restrained confirmation effect. Going over 26 should look clearly undesirable without implying the route is destroyed.
 
-## Turn state
+## Turn, connection, and deadline state
 
 The player should always know whether:
 
@@ -151,9 +161,12 @@ The player should always know whether:
 - the opponent is acting;
 - their own command is pending;
 - the connection is recovering/resynchronizing;
+- an authoritative reconnect/turn deadline is approaching when it materially affects the match;
 - the match is finished.
 
 Do not rely only on color to communicate these states.
+
+A socket interruption should visibly enter recovery state rather than immediately presenting defeat. If a server deadline is counting down, present the authoritative remaining time without allowing client time to define the outcome.
 
 ## Action controls outside direct card placement
 
@@ -163,7 +176,7 @@ Discarding a hand card should be easy but visually distinct from playing it.
 
 Disbanding an entire route should require an explicit selection/confirmation affordance sufficient to prevent accidental taps, but not a heavy modal ceremony every time.
 
-Surrender, when implemented, requires explicit confirmation because it ends the match.
+Surrender is required for the first playable and must require explicit confirmation because it ends the match as a server lifecycle result rather than a card-rule action.
 
 ## Sound
 
@@ -206,21 +219,23 @@ A normal match start should communicate:
 2. cards/decks are being prepared/shuffled by the game;
 3. initial hand arrives;
 4. the opening route-seeding phase begins;
-5. whose turn it is.
+5. which player has been selected to start.
 
-Do not expose seed material or future deck order as part of shuffle theatrics.
+Do not expose seed material, rejected mulligan hands, or future deck order as part of shuffle theatrics.
 
 ## Match end
 
 When the authoritative result arrives:
 
 - finish any short causally necessary transition;
-- clearly identify the winning player;
-- show the three final lane outcomes;
-- show finish reason when not a normal board victory;
+- clearly identify the winning player when one exists;
+- show the three final lane outcomes for a normal rules finish;
+- show finish reason for normal victory, deck exhaustion, surrender, timeout/forfeit, or infrastructure abort/no-contest;
 - present rematch and exit/return-to-play actions.
 
 Do not hide the table immediately behind a full-screen result before the player can understand the final action.
+
+For a no-contest/infrastructure abort, do not visually blame either player.
 
 ## Tutorial philosophy
 
