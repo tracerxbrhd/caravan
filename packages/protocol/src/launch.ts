@@ -10,7 +10,11 @@ export type LaunchContext =
   | { readonly kind: 'INVALID' };
 
 export function buildChallengeLaunchParam(inviteToken: InviteToken): string {
-  return `${CHALLENGE_PREFIX}${inviteTokenSchema.parse(inviteToken)}`;
+  const parsed = inviteTokenSchema.safeParse(inviteToken);
+  if (!parsed.success) {
+    throw new Error('Invalid private challenge invite token.');
+  }
+  return `${CHALLENGE_PREFIX}${parsed.data}`;
 }
 
 export function parseLaunchParam(value: string | null | undefined): LaunchContext {
