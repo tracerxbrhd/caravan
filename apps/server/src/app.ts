@@ -67,6 +67,7 @@ export async function buildServer(pool: pg.Pool, config: Config, options: BuildS
     },
     bodyLimit: 16_384,
     disableRequestLogging: true,
+    trustProxy: config.NODE_ENV === 'production',
   });
 
   await app.register(cookie);
