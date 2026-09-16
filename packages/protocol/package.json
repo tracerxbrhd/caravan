@@ -12,5 +12,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@caravan/game-engine": "workspace:*",
+    "zod": "4.3.6"
   }
 }
