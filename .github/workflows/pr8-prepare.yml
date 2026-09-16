@@ -1,0 +1,73 @@
+name: PR8 Prepare
+
+on:
+  push:
+    branches: [feat/pr8-realtime-runtime]
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://caravan:caravan-test@127.0.0.1:5432/caravan_test
+      CARAVAN_REQUIRE_DATABASE_TESTS: '1'
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: caravan_test
+          POSTGRES_USER: caravan
+          POSTGRES_PASSWORD: caravan-test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U caravan -d caravan_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/pr8-realtime-runtime
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install --global --allow-scripts=pnpm pnpm@12.4.1
+      - run: pnpm install --no-frozen-lockfile
+      - name: Format PR8 files
+        run: >-
+          pnpm exec prettier --write
+          package.json
+          apps/server/package.json
+          apps/server/src/app.ts
+          apps/server/src/config.ts
+          apps/server/src/index.ts
+          apps/server/src/match-service.ts
+          apps/server/src/match-store.ts
+          apps/server/src/postgres-match-store.ts
+          apps/server/src/realtime.ts
+          apps/server/test/auth-fixtures.ts
+          apps/server/test/config.test.ts
+          apps/server/test/realtime-lifecycle.test.ts
+          apps/server/test/runtime-auth.integration.test.ts
+          apps/server/test/runtime-realtime.integration.test.ts
+          packages/protocol/src/server.ts
+      - name: Commit generated changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml package.json apps/server packages/protocol/src/server.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: refresh PR8 generated files"
+            git push origin HEAD:feat/pr8-realtime-runtime
+          fi
+      - run: docker compose config
+      - run: pnpm build
+      - run: pnpm --filter @caravan/server db:migrate
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test:ci
