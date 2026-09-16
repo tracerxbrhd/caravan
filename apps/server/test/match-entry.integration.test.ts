@@ -81,6 +81,21 @@ describeDatabase('durable match entry', () => {
     expect(matchCount).toBe(1);
   });
 
+  it('switching to casual matchmaking cancels the account pending outgoing invite', async () => {
+    const inviter = await createAccount(pool, 'Inviter');
+    const invitee = await createAccount(pool, 'Invitee');
+    const created = await service.createChallenge(inviter);
+
+    expect((await service.joinMatchmaking(inviter)).status).toBe('QUEUED');
+    expect(await service.challengeStatus(inviter, created.challenge.id)).toMatchObject({
+      status: 'CANCELLED',
+      matchId: null,
+    });
+    await expect(service.acceptChallenge(invitee, created.inviteToken)).rejects.toThrow(
+      'CHALLENGE_UNAVAILABLE',
+    );
+  });
+
   it('accepts a private challenge idempotently and never persists the raw invite token', async () => {
     const inviter = await createAccount(pool, 'Inviter');
     const invitee = await createAccount(pool, 'Invitee');
@@ -129,6 +144,66 @@ describeDatabase('durable match entry', () => {
       )
     ).rows[0];
     expect(state).toEqual({ matches: 1, accepted: 1 });
+  });
+
+  it('serializes private acceptance against casual pairing for the same account', async () => {
+    const inviter = await createAccount(pool, 'Inviter');
+    const invitee = await createAccount(pool, 'Invitee');
+    const casualOpponent = await createAccount(pool, 'Casual');
+    const created = await service.createChallenge(inviter);
+    await service.joinMatchmaking(casualOpponent);
+
+    const [accepted, casualJoin] = await Promise.allSettled([
+      service.acceptChallenge(invitee, created.inviteToken),
+      service.joinMatchmaking(invitee),
+    ]);
+
+    const inviteeStatus = await service.matchmakingStatus(invitee);
+    expect(inviteeStatus.status).toBe('MATCH_FOUND');
+    const activeMatches = (
+      await pool.query<{ count: number }>(
+        "SELECT count(*)::integer AS count FROM caravan_matches WHERE status = 'ACTIVE'",
+      )
+    ).rows[0]?.count;
+    expect(activeMatches).toBe(1);
+
+    if (accepted.status === 'fulfilled') {
+      expect(casualJoin.status).toBe('fulfilled');
+      if (casualJoin.status === 'fulfilled') {
+        expect(casualJoin.value).toEqual({
+          status: 'MATCH_FOUND',
+          matchId: accepted.value.matchId,
+        });
+      }
+    } else {
+      expect(casualJoin.status).toBe('fulfilled');
+      expect(accepted.reason).toBeInstanceOf(Error);
+    }
+  });
+
+  it('persists challenge expiry even though accepting an expired token is rejected', async () => {
+    let now = Date.now();
+    const expiringService = new MatchEntryService(pool, {
+      matchmakingLeaseMs: 60_000,
+      challengeTtlMs: 1_000,
+      now: () => now,
+    });
+    const inviter = await createAccount(pool, 'Inviter');
+    const invitee = await createAccount(pool, 'Invitee');
+    const created = await expiringService.createChallenge(inviter);
+
+    now += 1_001;
+    await expect(expiringService.acceptChallenge(invitee, created.inviteToken)).rejects.toThrow(
+      'CHALLENGE_EXPIRED',
+    );
+
+    const status = (
+      await pool.query<{ status: string }>(
+        'SELECT status FROM caravan_private_challenges WHERE id = $1',
+        [created.challenge.id],
+      )
+    ).rows[0]?.status;
+    expect(status).toBe('EXPIRED');
   });
 
   it('prevents a player with an active match from opening a second match entry path', async () => {
