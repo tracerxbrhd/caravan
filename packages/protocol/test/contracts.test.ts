@@ -3,6 +3,7 @@ import {
   PROTOCOL_VERSION,
   clientCommandSchema,
   commandRejectedMessageSchema,
+  matchFinishResultSchema,
   matchSnapshotSchema,
   playerViewSchema,
   serverMessageSchema,
@@ -118,6 +119,16 @@ describe('server message contracts', () => {
     expect(matchSnapshotSchema.parse(finished)).toEqual(finished);
   });
 
+  it('rejects impossible winner/loser pairs', () => {
+    expect(
+      matchFinishResultSchema.safeParse({
+        reason: 'SURRENDER',
+        winner: 'A',
+        loser: 'A',
+      }).success,
+    ).toBe(false);
+  });
+
   it('accepts stable engine rule codes only through an explicit rejection payload', () => {
     const rejection = {
       protocolVersion: PROTOCOL_VERSION,
@@ -138,5 +149,29 @@ describe('server message contracts', () => {
         gameErrorCode: 'NOT_A_REAL_ENGINE_CODE',
       }).success,
     ).toBe(false);
+  });
+
+  it('requires rejection snapshots to match the advertised match and state version', () => {
+    const snapshot = { ...makeSnapshot(), stateVersion: 4 };
+    const rejection = {
+      protocolVersion: PROTOCOL_VERSION,
+      type: 'COMMAND_REJECTED' as const,
+      serverTimeMs: 100,
+      matchId: MATCH_ID,
+      commandId: COMMAND_ID,
+      stateVersion: 3,
+      code: 'STALE_STATE_VERSION' as const,
+      retryable: true,
+      gameErrorCode: null,
+      snapshot,
+    };
+
+    expect(commandRejectedMessageSchema.safeParse(rejection).success).toBe(false);
+    expect(
+      commandRejectedMessageSchema.safeParse({
+        ...rejection,
+        stateVersion: 4,
+      }).success,
+    ).toBe(true);
   });
 });
