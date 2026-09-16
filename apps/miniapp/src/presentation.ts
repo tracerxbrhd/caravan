@@ -8,13 +8,7 @@ export interface PresentationPreferences {
   readonly motion: MotionPreference;
 }
 
-export type TableFeedbackCue =
-  | 'DRAW'
-  | 'PLACE'
-  | 'MODIFIER'
-  | 'DISCARD'
-  | 'REMOVE'
-  | 'RESULT';
+export type TableFeedbackCue = 'DRAW' | 'PLACE' | 'MODIFIER' | 'DISCARD' | 'REMOVE' | 'RESULT';
 
 export const DEFAULT_PRESENTATION_PREFERENCES: PresentationPreferences = {
   sound: true,
