@@ -1,12 +1,6 @@
 import { PROTOCOL_VERSION, type ClientCommand } from '@caravan/protocol';
 import { describe, expect, it } from 'vitest';
-import {
-  ACCOUNT_A,
-  ACCOUNT_B,
-  MATCH_ID,
-  createHarness,
-  surrenderCommand,
-} from './fixtures.js';
+import { ACCOUNT_A, ACCOUNT_B, createHarness, surrenderCommand } from './fixtures.js';
 
 const SURRENDER_ID = '00000000-0000-4000-8000-000000000201';
 const RESYNC_ID = '00000000-0000-4000-8000-000000000202';
@@ -52,7 +46,7 @@ describe('server-owned match lifecycle', () => {
     const resync: ClientCommand = {
       protocolVersion: PROTOCOL_VERSION,
       type: 'RESYNC',
-      matchId: MATCH_ID,
+      matchId,
       commandId: RESYNC_ID,
       knownStateVersion: 0,
     };
