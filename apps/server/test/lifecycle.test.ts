@@ -82,8 +82,9 @@ describe('server-owned match lifecycle', () => {
     });
   });
 
-  it('does not expose snapshots to accounts outside the match', async () => {
+  it('does not expose snapshots or live state versions to accounts outside the match', async () => {
     const { service, matchId } = await createHarness();
+    await service.handleCommand(ACCOUNT_A, surrenderCommand(SURRENDER_ID, 0));
     expect(await service.getSnapshot(matchId, 'not-a-player')).toBeNull();
 
     const command: ClientCommand = {
@@ -97,6 +98,7 @@ describe('server-owned match lifecycle', () => {
     expect(response.type).toBe('COMMAND_REJECTED');
     if (response.type !== 'COMMAND_REJECTED') throw new Error('Expected membership rejection.');
     expect(response.code).toBe('NOT_MATCH_PLAYER');
+    expect(response.stateVersion).toBe(0);
     expect(response.snapshot).toBeUndefined();
   });
 });
