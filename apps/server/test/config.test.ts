@@ -20,6 +20,7 @@ describe('server configuration', () => {
     expect(config.RECONNECT_GRACE_SECONDS).toBe(30);
     expect(config.MATCHMAKING_LEASE_SECONDS).toBe(90);
     expect(config.CHALLENGE_TTL_SECONDS).toBe(900);
+    expect(config.REMATCH_TTL_SECONDS).toBe(900);
   });
 
   it('fails fast when required backend identity configuration is missing', () => {
