@@ -1,0 +1,29 @@
+:80 {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; base-uri 'none'; object-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: wss:; frame-ancestors https://web.telegram.org https://*.telegram.org"
+	}
+
+	handle /telegram/webhook {
+		reverse_proxy bot:3001
+	}
+
+	@backend path /api/* /ws /health /ready
+	handle @backend {
+		reverse_proxy server:3000 {
+			header_up X-Forwarded-For {http.request.header.X-Real-IP}
+			header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
+			header_up X-Forwarded-Host {http.request.header.Host}
+		}
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
