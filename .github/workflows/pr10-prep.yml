@@ -72,7 +72,7 @@ jobs:
           arch.write_text(text)
           PY
       - name: Format PR10
-        run: pnpm prettier --write apps/bot docs package.json .env.example
+        run: pnpm prettier --write apps/bot docs package.json
       - name: Remove temporary workflow
         run: rm .github/workflows/pr10-prep.yml
       - name: Commit prepared branch
