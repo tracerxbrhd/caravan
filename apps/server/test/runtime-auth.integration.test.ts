@@ -83,7 +83,8 @@ describeDatabase('authenticated server runtime', () => {
          JOIN sessions s ON s.account_id = a.id`,
       )
     ).rows[0];
-    if (persisted === undefined) throw new Error('Expected persisted account identity and session.');
+    if (persisted === undefined)
+      throw new Error('Expected persisted account identity and session.');
 
     expect(persisted.account_id).toBe(profile.id);
     expect(persisted.provider).toBe('TELEGRAM');
