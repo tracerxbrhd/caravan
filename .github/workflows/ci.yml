@@ -48,10 +48,17 @@ jobs:
         run: docker compose --env-file .env.production.example -f compose.production.yaml run --rm --no-deps web caddy validate --config /etc/caddy/Caddyfile
       - name: Smoke production stack
         run: |
+          docker compose --env-file .env.production.example -f compose.production.yaml up -d --wait db
+          docker compose --env-file .env.production.example -f compose.production.yaml run --rm --no-deps server node dist/migrate-cli.js
           docker compose --env-file .env.production.example -f compose.production.yaml up -d --wait
           curl --fail --show-error --silent http://127.0.0.1:18081/ > /dev/null
           curl --fail --show-error --silent http://127.0.0.1:18081/health > /dev/null
           curl --fail --show-error --silent http://127.0.0.1:18081/ready > /dev/null
+      - name: Diagnose production smoke failure
+        if: failure()
+        run: |
+          docker compose --env-file .env.production.example -f compose.production.yaml ps || true
+          docker compose --env-file .env.production.example -f compose.production.yaml logs --no-color --tail=200 db server bot web || true
       - name: Stop production smoke stack
         if: always()
         run: docker compose --env-file .env.production.example -f compose.production.yaml down -v --remove-orphans
