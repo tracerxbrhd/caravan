@@ -26,6 +26,7 @@ The root `README.md` is intentionally product-facing. Internal technical detail 
 - [`architecture/08-authenticated-server-runtime.md`](architecture/08-authenticated-server-runtime.md) — Fastify runtime, provider-independent accounts, Telegram `initData` verification, opaque PostgreSQL sessions, HTTP security baseline, and Mini App authentication bootstrap.
 - [`architecture/09-authenticated-realtime-runtime.md`](architecture/09-authenticated-realtime-runtime.md) — authenticated WebSocket transport, controlling connections, viewer-safe broadcast, reconnect/deadline lifecycle, and restart recovery.
 - [`architecture/10-match-entry.md`](architecture/10-match-entry.md) — durable casual matchmaking and private challenge entry, invite-token security, account-level concurrency, and authoritative match creation handoff.
+- [`architecture/11-telegram-entry.md`](architecture/11-telegram-entry.md) — thin Telegram webhook runtime, Mini App launch/deep-link context, invite-token transport boundary, and deployment routing direction.
 
 ## Development
 
