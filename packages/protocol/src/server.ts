@@ -150,6 +150,7 @@ export const commandRejectionCodeSchema = z.enum([
   'INVALID_COMMAND',
   'MATCH_NOT_FOUND',
   'NOT_MATCH_PLAYER',
+  'MATCH_NOT_READY',
   'MATCH_FINISHED',
   'STALE_STATE_VERSION',
   'DUPLICATE_COMMAND',
