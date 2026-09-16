@@ -6,31 +6,17 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
       - run: npm install --global --allow-scripts=pnpm pnpm@12.4.1
       - run: pnpm install --frozen-lockfile
-      - name: Format game engine
-        if: github.event_name == 'pull_request'
-        run: |
-          pnpm exec prettier --write packages/game-engine
-          if git diff --quiet -- packages/game-engine; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/game-engine
-          git commit -m "style(engine): apply Prettier"
-          git push origin HEAD:${{ github.head_ref }}
       - run: pnpm verify
       - run: pnpm audit --prod --audit-level high
