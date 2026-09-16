@@ -230,10 +230,7 @@ export async function installRealtimeRuntime(
       await rejectWithoutControl(connection, command);
       return;
     }
-    if (
-      before.status === 'ACTIVE' &&
-      (!before.connected.A || !before.connected.B || before.turnDeadlineAtMs === null)
-    ) {
+    if (before.status === 'ACTIVE' && before.turnDeadlineAtMs === null) {
       send(
         connection.socket,
         commandRejectedMessageSchema.parse({
