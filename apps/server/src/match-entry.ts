@@ -249,7 +249,9 @@ export class MatchEntryService {
 
         const ownMatchId = await activeMatchId(db, accountId);
         if (ownMatchId !== null) {
-          await db.query('DELETE FROM caravan_matchmaking_queue WHERE account_id = $1', [accountId]);
+          await db.query('DELETE FROM caravan_matchmaking_queue WHERE account_id = $1', [
+            accountId,
+          ]);
           return matchmakingStatusSchema.parse({ status: 'MATCH_FOUND', matchId: ownMatchId });
         }
 
@@ -340,7 +342,10 @@ export class MatchEntryService {
     });
   }
 
-  public async challengeStatus(accountId: string, challengeId: ChallengeId): Promise<ChallengeView> {
+  public async challengeStatus(
+    accountId: string,
+    challengeId: ChallengeId,
+  ): Promise<ChallengeView> {
     const row = (
       await this.#pool.query<ChallengeRow>(
         `SELECT id::text,

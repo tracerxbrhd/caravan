@@ -1,10 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
-import {
-  challengeIdSchema,
-  inviteTokenRequestSchema,
-  type ChallengeId,
-} from '@caravan/protocol';
+import { challengeIdSchema, inviteTokenRequestSchema, type ChallengeId } from '@caravan/protocol';
 import { z } from 'zod';
 import { SESSION_COOKIE_NAME, sessionAccount } from './accounts.js';
 import type { Config } from './config.js';
@@ -12,7 +8,11 @@ import { MatchEntryService } from './match-entry.js';
 
 const challengeParamsSchema = z.object({ challengeId: challengeIdSchema }).strict();
 
-async function authenticatedAccount(app: FastifyInstance, pool: pg.Pool, cookie: string | undefined) {
+async function authenticatedAccount(
+  app: FastifyInstance,
+  pool: pg.Pool,
+  cookie: string | undefined,
+) {
   try {
     return await sessionAccount(pool, cookie);
   } catch (error) {
@@ -32,11 +32,7 @@ export async function installMatchEntryRoutes(
   });
 
   app.get('/api/matchmaking', async (request) => {
-    const accountId = await authenticatedAccount(
-      app,
-      pool,
-      request.cookies[SESSION_COOKIE_NAME],
-    );
+    const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
     return service.matchmakingStatus(accountId);
   });
 
@@ -44,11 +40,7 @@ export async function installMatchEntryRoutes(
     '/api/matchmaking/join',
     { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
     async (request) => {
-      const accountId = await authenticatedAccount(
-        app,
-        pool,
-        request.cookies[SESSION_COOKIE_NAME],
-      );
+      const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
       return service.joinMatchmaking(accountId);
     },
   );
@@ -57,21 +49,13 @@ export async function installMatchEntryRoutes(
     '/api/matchmaking/heartbeat',
     { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },
     async (request) => {
-      const accountId = await authenticatedAccount(
-        app,
-        pool,
-        request.cookies[SESSION_COOKIE_NAME],
-      );
+      const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
       return service.heartbeatMatchmaking(accountId);
     },
   );
 
   app.delete('/api/matchmaking', async (request) => {
-    const accountId = await authenticatedAccount(
-      app,
-      pool,
-      request.cookies[SESSION_COOKIE_NAME],
-    );
+    const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
     return service.leaveMatchmaking(accountId);
   });
 
@@ -79,21 +63,13 @@ export async function installMatchEntryRoutes(
     '/api/challenges',
     { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
     async (request) => {
-      const accountId = await authenticatedAccount(
-        app,
-        pool,
-        request.cookies[SESSION_COOKIE_NAME],
-      );
+      const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
       return service.createChallenge(accountId);
     },
   );
 
   app.get('/api/challenges/:challengeId', async (request) => {
-    const accountId = await authenticatedAccount(
-      app,
-      pool,
-      request.cookies[SESSION_COOKIE_NAME],
-    );
+    const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
     const { challengeId } = challengeParamsSchema.parse(request.params) as {
       challengeId: ChallengeId;
     };
@@ -101,31 +77,19 @@ export async function installMatchEntryRoutes(
   });
 
   app.post('/api/challenges/accept', async (request) => {
-    const accountId = await authenticatedAccount(
-      app,
-      pool,
-      request.cookies[SESSION_COOKIE_NAME],
-    );
+    const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
     const { inviteToken } = inviteTokenRequestSchema.parse(request.body);
     return service.acceptChallenge(accountId, inviteToken);
   });
 
   app.post('/api/challenges/decline', async (request) => {
-    const accountId = await authenticatedAccount(
-      app,
-      pool,
-      request.cookies[SESSION_COOKIE_NAME],
-    );
+    const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
     const { inviteToken } = inviteTokenRequestSchema.parse(request.body);
     return service.declineChallenge(accountId, inviteToken);
   });
 
   app.post('/api/challenges/:challengeId/cancel', async (request) => {
-    const accountId = await authenticatedAccount(
-      app,
-      pool,
-      request.cookies[SESSION_COOKIE_NAME],
-    );
+    const accountId = await authenticatedAccount(app, pool, request.cookies[SESSION_COOKIE_NAME]);
     const { challengeId } = challengeParamsSchema.parse(request.params) as {
       challengeId: ChallengeId;
     };

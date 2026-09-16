@@ -14,9 +14,10 @@ const TOKEN = 'A'.repeat(43);
 describe('match entry protocol contracts', () => {
   it('accepts explicit idle, queued and match-found matchmaking states', () => {
     expect(matchmakingStatusSchema.parse({ status: 'IDLE' })).toEqual({ status: 'IDLE' });
-    expect(
-      matchmakingStatusSchema.parse({ status: 'QUEUED', leaseExpiresAtMs: 123_456 }),
-    ).toEqual({ status: 'QUEUED', leaseExpiresAtMs: 123_456 });
+    expect(matchmakingStatusSchema.parse({ status: 'QUEUED', leaseExpiresAtMs: 123_456 })).toEqual({
+      status: 'QUEUED',
+      leaseExpiresAtMs: 123_456,
+    });
     expect(matchmakingStatusSchema.parse({ status: 'MATCH_FOUND', matchId: MATCH_ID })).toEqual({
       status: 'MATCH_FOUND',
       matchId: MATCH_ID,

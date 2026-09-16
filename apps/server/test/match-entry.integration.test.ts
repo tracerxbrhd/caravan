@@ -9,7 +9,10 @@ if (process.env.CARAVAN_REQUIRE_DATABASE_TESTS === '1' && databaseUrl === undefi
 
 const describeDatabase = databaseUrl === undefined ? describe.skip : describe;
 
-async function createAccount(pool: ReturnType<typeof createPool>, displayName: string): Promise<string> {
+async function createAccount(
+  pool: ReturnType<typeof createPool>,
+  displayName: string,
+): Promise<string> {
   const id = randomUUID();
   await pool.query('INSERT INTO accounts (id, display_name) VALUES ($1, $2)', [id, displayName]);
   return id;
