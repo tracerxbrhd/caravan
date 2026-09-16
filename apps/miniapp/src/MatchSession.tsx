@@ -102,7 +102,7 @@ export function MatchSession({
         if (state !== 'ONLINE') setPending(false);
       },
       onSnapshot: (next, serverTimeMs) => {
-        setClockAnchor({ serverTimeMs, clientTimeMs: Date.now() });
+        setClockAnchor({ serverTimeMs, clientMonotonicMs: performance.now() });
         commitPresentationUpdate(() => setSnapshot(next));
         setPending(false);
         setRejection(null);
