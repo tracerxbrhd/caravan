@@ -402,10 +402,12 @@ export class MatchEntryService {
     accountId: string,
     inviteToken: InviteToken,
   ): Promise<AcceptedChallenge> {
-    const accepted = await transaction(this.#pool, async (db): Promise<AcceptedChallenge | null> => {
-      const initial = (
-        await db.query<ChallengeRow>(
-          `SELECT id::text,
+    const accepted = await transaction(
+      this.#pool,
+      async (db): Promise<AcceptedChallenge | null> => {
+        const initial = (
+          await db.query<ChallengeRow>(
+            `SELECT id::text,
                   inviter_account_id::text,
                   status,
                   resolved_by_account_id::text,
@@ -414,53 +416,53 @@ export class MatchEntryService {
                   expires_at
              FROM caravan_private_challenges
             WHERE invite_token_hash = $1`,
-          [tokenHash(inviteToken)],
-        )
-      ).rows[0];
-      if (initial === undefined) throw new Error('CHALLENGE_NOT_FOUND');
-      if (initial.inviter_account_id === accountId) {
-        throw new Error('CANNOT_ACCEPT_OWN_CHALLENGE');
-      }
+            [tokenHash(inviteToken)],
+          )
+        ).rows[0];
+        if (initial === undefined) throw new Error('CHALLENGE_NOT_FOUND');
+        if (initial.inviter_account_id === accountId) {
+          throw new Error('CANNOT_ACCEPT_OWN_CHALLENGE');
+        }
 
-      await lockMatchmakingQueue(db);
-      await lockAccounts(db, [initial.inviter_account_id, accountId]);
-      const row = await loadChallengeByIdForUpdate(db, challengeIdSchema.parse(initial.id));
-      if (row === null) throw new Error('CHALLENGE_NOT_FOUND');
+        await lockMatchmakingQueue(db);
+        await lockAccounts(db, [initial.inviter_account_id, accountId]);
+        const row = await loadChallengeByIdForUpdate(db, challengeIdSchema.parse(initial.id));
+        if (row === null) throw new Error('CHALLENGE_NOT_FOUND');
 
-      if (
-        row.status === 'ACCEPTED' &&
-        row.resolved_by_account_id === accountId &&
-        row.match_id !== null
-      ) {
-        const matchId = matchIdSchema.parse(row.match_id);
-        return { challenge: challengeView(row) as AcceptedChallenge['challenge'], matchId };
-      }
-      if (row.status !== 'PENDING') throw new Error('CHALLENGE_UNAVAILABLE');
+        if (
+          row.status === 'ACCEPTED' &&
+          row.resolved_by_account_id === accountId &&
+          row.match_id !== null
+        ) {
+          const matchId = matchIdSchema.parse(row.match_id);
+          return { challenge: challengeView(row) as AcceptedChallenge['challenge'], matchId };
+        }
+        if (row.status !== 'PENDING') throw new Error('CHALLENGE_UNAVAILABLE');
 
-      const now = new Date(this.#now());
-      if (row.expires_at.getTime() <= now.getTime()) {
-        await db.query(
-          `UPDATE caravan_private_challenges
+        const now = new Date(this.#now());
+        if (row.expires_at.getTime() <= now.getTime()) {
+          await db.query(
+            `UPDATE caravan_private_challenges
               SET status = 'EXPIRED', resolved_at = $2
             WHERE id = $1`,
-          [row.id, now],
-        );
-        return null;
-      }
+            [row.id, now],
+          );
+          return null;
+        }
 
-      if ((await activeMatchId(db, row.inviter_account_id)) !== null) {
-        throw new Error('CHALLENGE_UNAVAILABLE');
-      }
-      if ((await activeMatchId(db, accountId)) !== null) throw new Error('MATCH_ALREADY_ACTIVE');
+        if ((await activeMatchId(db, row.inviter_account_id)) !== null) {
+          throw new Error('CHALLENGE_UNAVAILABLE');
+        }
+        if ((await activeMatchId(db, accountId)) !== null) throw new Error('MATCH_ALREADY_ACTIVE');
 
-      const matchService = new MatchService(new PostgresMatchStore(db));
-      const { matchId } = await matchService.createMatch({
-        participants: { A: row.inviter_account_id, B: accountId },
-      });
+        const matchService = new MatchService(new PostgresMatchStore(db));
+        const { matchId } = await matchService.createMatch({
+          participants: { A: row.inviter_account_id, B: accountId },
+        });
 
-      const resolved = (
-        await db.query<ChallengeRow>(
-          `UPDATE caravan_private_challenges
+        const resolved = (
+          await db.query<ChallengeRow>(
+            `UPDATE caravan_private_challenges
               SET status = 'ACCEPTED',
                   resolved_by_account_id = $2,
                   match_id = $3,
@@ -473,17 +475,18 @@ export class MatchEntryService {
                       match_id::text,
                       created_at,
                       expires_at`,
-          [row.id, accountId, matchId, now],
-        )
-      ).rows[0];
-      if (resolved === undefined) throw new Error('INTERNAL_ERROR');
+            [row.id, accountId, matchId, now],
+          )
+        ).rows[0];
+        if (resolved === undefined) throw new Error('INTERNAL_ERROR');
 
-      await db.query('DELETE FROM caravan_matchmaking_queue WHERE account_id = ANY($1::uuid[])', [
-        [row.inviter_account_id, accountId],
-      ]);
-      await cancelOutgoingChallenges(db, [row.inviter_account_id, accountId], now);
-      return { challenge: challengeView(resolved) as AcceptedChallenge['challenge'], matchId };
-    });
+        await db.query('DELETE FROM caravan_matchmaking_queue WHERE account_id = ANY($1::uuid[])', [
+          [row.inviter_account_id, accountId],
+        ]);
+        await cancelOutgoingChallenges(db, [row.inviter_account_id, accountId], now);
+        return { challenge: challengeView(resolved) as AcceptedChallenge['challenge'], matchId };
+      },
+    );
 
     if (accepted === null) throw new Error('CHALLENGE_EXPIRED');
     return accepted;
