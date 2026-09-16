@@ -75,7 +75,9 @@ Control ownership is process-local transport state. Match state, connection flag
 
 Transport readiness is deliberately not a pure game-engine or generic `MatchService` rule.
 
-The realtime adapter rejects state-changing client commands with `MATCH_NOT_READY` until both seats are connected and the authoritative turn deadline has started. This prevents the first arriving realtime client from playing before its opponent has entered while preserving transport-independent service tests and server orchestration.
+Before a match has started, the realtime adapter rejects state-changing client commands with `MATCH_NOT_READY`. The first authoritative turn deadline is created only after both seats have connected, so the first arriving client cannot play before its opponent has entered.
+
+This gate applies only to the pre-start state where `turnDeadlineAtMs` is still `null`. Once the match has started, a later opponent disconnect does not freeze the connected active player: that player may still submit a legal action while the disconnected seat is governed independently by its reconnect deadline. This avoids a fairness failure where the server would keep an active player's turn clock running while simultaneously refusing that player's move.
 
 ## Hidden-information broadcasting
 
@@ -119,7 +121,7 @@ These are operational/product defaults, not `packages/game-engine` constants.
 
 The first turn deadline starts only after both players have connected. An accepted non-finishing state-changing command resets the turn deadline from authoritative server time.
 
-When the controlling socket disconnects after the match has started, the seat becomes disconnected and receives a reconnect deadline. A successful reconnect clears that deadline; it does not let the client supply or extend server time.
+When the controlling socket disconnects after the match has started, the seat becomes disconnected and receives a reconnect deadline. A successful reconnect clears that deadline; it does not let the client supply or extend server time. The other connected player is not forced into a transport pause solely because the opponent is inside reconnect grace.
 
 A periodic server sweep checks durable active matches for expired deadlines. Deadline finalization is CAS-protected and therefore idempotent under races.
 
@@ -164,7 +166,8 @@ Automated coverage protects at minimum:
 - restart recovery semantics;
 - authenticated WebSocket handshake;
 - `RESYNC` participant ownership;
-- `MATCH_NOT_READY` before both players connect;
+- `MATCH_NOT_READY` before the initial match start;
+- legal active-player commands remaining accepted while the opponent is inside reconnect grace;
 - controlling-socket takeover and stale-socket rejection;
 - state-changing command persistence before peer broadcast;
 - viewer-specific hidden-information isolation over the real WebSocket transport;
