@@ -156,6 +156,7 @@ export const commandRejectionCodeSchema = z.enum([
   'NOT_ACTIVE_PLAYER',
   'ILLEGAL_ACTION',
   'DEADLINE_EXPIRED',
+  'CONNECTION_NOT_OWNER',
   'INTERNAL_ERROR',
 ]);
 
