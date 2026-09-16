@@ -1,6 +1,6 @@
 # Development
 
-CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, typed/runtime-validated `packages/protocol` contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, authenticated Fastify HTTP runtime, authenticated WebSocket realtime runtime, durable match-entry runtime in `apps/server`, and a thin Telegram entry runtime in `apps/bot`. Telegram `initData` authentication, provider-independent accounts, PostgreSQL-backed application sessions, casual matchmaking, private challenges, reconnect/deadline lifecycle, bot `/start`/webhook/deep-link entry, and the Mini App authentication bootstrap are implemented. Mini App Play/match-entry/realtime orchestration, the legal-action-driven interactive card table, the optional visual rules guide, authoritative match results, durable direct rematches, and the baseline tactile transition/audio/haptic presentation layer are implemented; production application deployment remains intentionally unimplemented unless later documentation says otherwise.
+CARAVAN has its pnpm/TypeScript workspace scaffold, deterministic `packages/game-engine` rules implementation, typed/runtime-validated `packages/protocol` contracts, authoritative match-service domain layer, PostgreSQL-backed durable match persistence, authenticated Fastify HTTP runtime, authenticated WebSocket realtime runtime, durable match-entry runtime in `apps/server`, and a thin Telegram entry runtime in `apps/bot`. Telegram `initData` authentication, provider-independent accounts, PostgreSQL-backed application sessions, casual matchmaking, private challenges, reconnect/deadline lifecycle, bot `/start`/webhook/deep-link entry, and the Mini App authentication bootstrap are implemented. Mini App Play/match-entry/realtime orchestration, the legal-action-driven interactive card table, the optional visual rules guide, authoritative match results, durable direct rematches, the baseline tactile transition/audio/haptic presentation layer, and the production Docker/manual-deployment path are implemented; wiring a real public Telegram bot/domain remains a separate production step.
 
 ## Before implementation work
 
@@ -30,6 +30,7 @@ For gameplay, server, protocol, persistence, authentication, realtime, match-ent
 20. [`../architecture/14-rules-guide.md`](../architecture/14-rules-guide.md)
 21. [`../architecture/15-results-and-rematch.md`](../architecture/15-results-and-rematch.md)
 22. [`../architecture/16-tactile-game-feel.md`](../architecture/16-tactile-game-feel.md)
+23. [`../architecture/17-production-docker-and-deployment.md`](../architecture/17-production-docker-and-deployment.md)
 
 `product/04-market-and-competitive-context.md` is useful product context but is not an implementation contract.
 
@@ -121,7 +122,7 @@ pnpm build
 pnpm --filter @caravan/server db:migrate
 ```
 
-The Compose file intentionally contains PostgreSQL only at this stage. It is a reproducible development/integration-test dependency, not the final production deployment stack.
+`compose.yaml` intentionally remains the lightweight local PostgreSQL dependency. The deployable application stack lives in `compose.production.yaml`; see [`production-deployment.md`](production-deployment.md) for production setup, rollout and rollback commands.
 
 ## Running the current server runtime
 
@@ -162,7 +163,7 @@ A match participant uses `RESYNC` to establish/take over control for a match and
 
 In local development Vite proxies both `/api` and `/ws` to `127.0.0.1:3000`, so the implemented Play flow exercises the same authenticated HTTP and realtime boundaries as production composition will expose.
 
-Production requires an HTTPS `PUBLIC_ORIGIN`. Production requests are checked against the configured public Host, mutations remain same-origin, and `/ws` validates the Origin during upgrade.
+Production requires an HTTPS `PUBLIC_ORIGIN`. Production requests are checked against the configured public Host, mutations remain same-origin, and `/ws` validates the Origin during upgrade. The production server trusts forwarded client addressing only when `NODE_ENV=production`, matching the deployment contract where the server has no host port and is reachable only through the trusted Caddy edge.
 
 ## Commands
 
@@ -283,9 +284,9 @@ Authentication or HTTP/runtime changes should protect:
 
 ## CI
 
-`.github/workflows/ci.yml` runs on pull requests and pushes to `main` using Node.js 24 and PostgreSQL 18. CI performs frozen dependency installation, validates `compose.yaml`, builds the workspace, applies committed database migrations, then runs the repository build/lint/format/typecheck/test gate and production dependency audit.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main`, and can also be reused by the manual production deployment workflow. It uses Node.js 24 and PostgreSQL 18, performs frozen dependency installation, validates both local and production Compose configurations, builds the workspace, applies committed database migrations, runs the build/lint/format/typecheck/test gate and production dependency audit, builds all production image targets, validates Caddy configuration, then boots the complete production Compose stack and probes the static app plus `/health` and `/ready` through the web edge.
 
-`CARAVAN_REQUIRE_DATABASE_TESTS=1` makes PostgreSQL integration coverage mandatory in CI. Playwright and production application-container/deployment checks should be added only when the corresponding runtime surfaces exist.
+`CARAVAN_REQUIRE_DATABASE_TESTS=1` makes PostgreSQL integration coverage mandatory in CI. The committed `.env.production.example` contains only non-production smoke-test values; real deployment secrets remain outside Git.
 
 ## Development principles
 
@@ -307,5 +308,6 @@ Authentication or HTTP/runtime changes should protect:
 - validate persisted snapshots on both write and restore;
 - serialize match-entry races at the server/database boundary rather than trusting client UI state;
 - use committed migrations rather than ad-hoc production schema changes;
+- keep production secrets outside images, Git and ordinary logs;
 - do not introduce infrastructure for hypothetical scale;
 - never make the client authoritative merely to simplify a UI prototype.
