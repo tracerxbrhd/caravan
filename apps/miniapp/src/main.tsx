@@ -4,6 +4,7 @@ import { App } from './App.js';
 import './styles.css';
 import './table.css';
 import './rules.css';
+import './result.css';
 
 const root = document.getElementById('root');
 
