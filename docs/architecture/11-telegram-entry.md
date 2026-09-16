@@ -35,6 +35,8 @@ https://t.me/<BOT_USERNAME>?startapp=challenge_<inviteToken>
 
 Telegram passes a non-empty `startapp` value into the Mini App launch context. The upcoming Mini App Play layer must read that value through the platform adapter, validate the same format, authenticate normally, and then submit the invite token to the existing authenticated challenge API.
 
+The bot's Main Mini App must be configured through BotFather to open the same public Mini App surface represented by `PUBLIC_ORIGIN`; otherwise the `?startapp=` links cannot be treated as a complete deployment path. That Telegram-side setup is deployment configuration, not application authority.
+
 Unknown, malformed, overlong, or unsupported `/start` payloads fail closed and are not reflected back to the user.
 
 ## Challenge security boundary
@@ -102,7 +104,7 @@ DNS already points that hostname at the existing VPS. The intended deployment is
 /telegram/webhook  -> apps/bot
 ```
 
-This document records the boundary and target topology only. Production Docker images, reverse-proxy configuration, TLS wiring, and webhook registration remain a later deployment-focused change and must not be represented as already implemented.
+This document records the boundary and target topology only. Production Docker images, reverse-proxy configuration, TLS wiring, Main Mini App configuration, and webhook registration remain a later deployment-focused change and must not be represented as already implemented.
 
 ## Portability
 
