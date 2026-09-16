@@ -6,6 +6,7 @@ import './table.css';
 import './motion.css';
 import './rules.css';
 import './result.css';
+import './hardening.css';
 
 const root = document.getElementById('root');
 
