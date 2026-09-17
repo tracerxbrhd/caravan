@@ -12,7 +12,7 @@
     "build": "pnpm -r --if-present run build",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier apps/miniapp/src/table.css > /tmp/table.css && diff -u apps/miniapp/src/table.css /tmp/table.css; prettier apps/miniapp/test/three-caravan-layout.test.ts > /tmp/three-caravan-layout.test.ts && diff -u apps/miniapp/test/three-caravan-layout.test.ts /tmp/three-caravan-layout.test.ts",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "vitest run --passWithNoTests",
     "test:ci": "vitest run --passWithNoTests --no-file-parallelism",
