@@ -7,13 +7,17 @@ const matchSession = readFileSync(new URL('../src/MatchSession.tsx', import.meta
 
 describe('PR23 mobile match surface', () => {
   it('loads the stabilization overrides after the existing match styles', () => {
-    expect(main.indexOf("import './pr23.css';")).toBeGreaterThan(main.indexOf("import './hardening.css';"));
+    expect(main.indexOf("import './pr23.css';")).toBeGreaterThan(
+      main.indexOf("import './hardening.css';"),
+    );
   });
 
   it('keeps the live table below Telegram chrome using the computed content safe area', () => {
     expect(css).toMatch(/\.shell--match\s*\{[^}]*var\(--app-content-safe-top\)/s);
     expect(css).toMatch(/\.shell--match\s*\{[^}]*var\(--app-content-safe-bottom\)/s);
-    expect(css).toMatch(/@media \(max-width: 440px\)[\s\S]*?\.shell--match\s*\{[^}]*var\(--app-content-safe-top\)/s);
+    expect(css).toMatch(
+      /@media \(max-width: 440px\)[\s\S]*?\.shell--match\s*\{[^}]*var\(--app-content-safe-top\)/s,
+    );
   });
 
   it('presents control replacement as an account-scoped screen takeover rather than opponent ownership', () => {
