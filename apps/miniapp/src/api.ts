@@ -143,11 +143,23 @@ export function acceptChallenge(inviteToken: InviteToken): Promise<AcceptedChall
   });
 }
 
-export function declineChallenge(inviteToken: InviteToken): Promise<ChallengeResolution> {
-  return requestParsed('/api/challenges/decline', challengeResolutionSchema, {
-    method: 'POST',
-    body: JSON.stringify({ inviteToken }),
-  });
+export async function declineChallenge(inviteToken: InviteToken): Promise<void> {
+  try {
+    await requestParsed('/api/challenges/decline', challengeResolutionSchema, {
+      method: 'POST',
+      body: JSON.stringify({ inviteToken }),
+    });
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      (error.code === 'CHALLENGE_NOT_FOUND' ||
+        error.code === 'CHALLENGE_EXPIRED' ||
+        error.code === 'CHALLENGE_UNAVAILABLE')
+    ) {
+      return;
+    }
+    throw error;
+  }
 }
 
 export function cancelChallenge(challengeId: ChallengeId): Promise<ChallengeResolution> {
