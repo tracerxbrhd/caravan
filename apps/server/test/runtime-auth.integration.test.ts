@@ -149,6 +149,10 @@ describeDatabase('authenticated server runtime', () => {
     expect(secondProfile.displayName).toBe('Account B');
     expect(secondCookie).not.toBe(firstCookie);
 
+    const stale = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: firstCookie } });
+    expect(stale.statusCode).toBe(401);
+    expect(errorSchema.parse(stale.json())).toEqual({ code: 'UNAUTHENTICATED' });
+
     const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie: secondCookie } });
     expect(me.statusCode).toBe(200);
     expect(profileSchema.parse(me.json())).toEqual(secondProfile);
