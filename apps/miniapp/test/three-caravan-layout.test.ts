@@ -32,7 +32,7 @@ describe('three-caravan table composition', () => {
     expect(table).toContain('<details className="table-menu">');
     expect(table).toContain('Open table controls');
     expect(table).toContain('Leave table');
-    expect(table).toContain("snapshot.turnDeadlineAtMs === null");
+    expect(table).toContain('snapshot.turnDeadlineAtMs === null');
   });
 
   it('preserves authoritative tap-target interaction instead of introducing a second placement model', () => {
