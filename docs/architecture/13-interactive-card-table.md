@@ -4,7 +4,7 @@
 
 Implemented as the first fully interactive competitive match surface in the Mini App. This layer consumes the authoritative `MatchSnapshot` and realtime helpers introduced by the Mini App Play flow; it does not introduce another gameplay state machine or transport.
 
-Confirmed card travel, public discard destinations, sound, haptics, and richer causal presentation are implemented as the separate downstream layer in [`16-tactile-game-feel.md`](16-tactile-game-feel.md).
+The original vertical compact layout has since been replaced by the PR24 three-caravan composition: all three opposing route pairs stay visible side by side in portrait, while each individual route overlaps/scrolls its public cards locally. Confirmed card travel, public discard destinations, sound, haptics, and richer causal presentation remain the separate downstream layer in [`16-tactile-game-feel.md`](16-tactile-game-feel.md).
 
 ## Authority model
 
@@ -72,9 +72,13 @@ Cards use original lightweight DOM/CSS presentation rather than borrowed game as
 
 ## Responsive and motion behavior
 
-Desktop/tablet layouts can show the three lane pairs side by side. Compact portrait layouts stack lane pairs vertically rather than shrinking cards below useful touch/readability size.
+The table is composed as three parallel caravans on desktop, tablet, and portrait phone layouts. A compact screen must not serialize the three lane pairs into a long vertical dashboard because comparison between caravan 1/2/3 is primary gameplay information.
 
-Hand and long route contents may scroll horizontally within their local region.
+Each caravan is a bounded column with the rival route above, a compact ownership crossing in the middle, and the viewer route below. Rival/viewer route values and statuses face the middle crossing so the paired competition can be read immediately. Route cards overlap along the route axis and may scroll inside that route when necessary; board height stays bounded instead of growing with every public card.
+
+This keeps all three competitions visible while preserving readable card corners and useful touch targets. Exact modifier targets remain individual card buttons; value-card placement continues to expose only authoritative own-route targets.
+
+The hand remains the existing tap-select surface until the separately scoped cyclic/expanded hand interaction is implemented. PR24 deliberately does not make dragging mandatory and does not add client-authoritative placement state.
 
 Selection and legal-target feedback use transform, opacity, border, and shadow animation. Reduced-motion users inherit the Mini App's existing `prefers-reduced-motion` fallback, which collapses decorative animation without removing state information.
 
