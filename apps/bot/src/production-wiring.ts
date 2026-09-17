@@ -15,6 +15,14 @@ function sameUsername(actual: string, configured: string): boolean {
   return actual.toLowerCase() === configured.toLowerCase();
 }
 
+function sameUrl(actual: string, configured: string): boolean {
+  try {
+    return new URL(actual).href === new URL(configured).href;
+  } catch {
+    return false;
+  }
+}
+
 function expectedWebhookUrl(publicOrigin: string): string {
   return new URL('/telegram/webhook', `${publicOrigin}/`).toString();
 }
@@ -63,7 +71,8 @@ export async function configureProductionTelegram(
   if (
     menuButton.type !== 'web_app' ||
     menuButton.text !== MENU_BUTTON_TEXT ||
-    menuButton.webAppUrl !== config.PUBLIC_ORIGIN
+    menuButton.webAppUrl === null ||
+    !sameUrl(menuButton.webAppUrl, config.PUBLIC_ORIGIN)
   ) {
     throw new Error('Telegram menu-button verification did not match production configuration.');
   }

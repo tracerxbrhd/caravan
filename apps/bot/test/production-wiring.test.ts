@@ -76,6 +76,24 @@ describe('production Telegram wiring', () => {
     ]);
   });
 
+  it('accepts Telegram canonicalizing the root menu-button URL with a trailing slash', async () => {
+    const fake = fakeAdmin({ menuButtonUrl: 'https://caravan.example.com/' });
+
+    await expect(
+      configureProductionTelegram(productionConfig(), fake.admin),
+    ).resolves.toMatchObject({
+      menuButtonUrl: 'https://caravan.example.com',
+    });
+  });
+
+  it('still rejects a menu button URL that points somewhere else', async () => {
+    const fake = fakeAdmin({ menuButtonUrl: 'https://caravan.example.com/other' });
+
+    await expect(configureProductionTelegram(productionConfig(), fake.admin)).rejects.toThrow(
+      'Telegram menu-button verification did not match production configuration.',
+    );
+  });
+
   it('fails before mutation when BOT_USERNAME belongs to a different bot token', async () => {
     const fake = fakeAdmin({ username: 'DifferentBot' });
 
