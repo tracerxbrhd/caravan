@@ -57,6 +57,10 @@ function friendlyError(error: unknown): string {
       return 'You already have an active match.';
     case 'CHALLENGE_UNAVAILABLE':
       return 'That challenge can no longer be accepted.';
+    case 'CANNOT_ACCEPT_OWN_CHALLENGE':
+      return 'You cannot accept your own challenge.';
+    case 'CANNOT_DECLINE_OWN_CHALLENGE':
+      return 'You cannot decline your own challenge.';
     case 'UNAUTHENTICATED':
       return 'Your session expired. Reopen CARAVAN from Telegram.';
     default:
@@ -248,7 +252,7 @@ export function Play({
   const stopQueue = (): void => {
     void run(async () => {
       await leaveMatchmaking();
-      setFlow({ kind: 'HOME' });
+      setFlow({ kind: 'HOME', notice: 'Matchmaking ended. You can queue again.' });
     });
   };
 
