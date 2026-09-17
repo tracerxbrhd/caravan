@@ -20,8 +20,11 @@ import { RulesGuide } from './RulesGuide.js';
 import { commitPresentationUpdate } from './view-transition.js';
 
 const IDLE_REMATCH: RematchStatus = { status: 'IDLE' };
+type MatchControlState = 'OWNED' | 'REPLACED' | 'RECLAIMING';
 
-function connectionLabel(state: MatchConnectionState): string {
+function connectionLabel(state: MatchConnectionState, controlState: MatchControlState): string {
+  if (controlState === 'REPLACED') return 'Paused';
+  if (controlState === 'RECLAIMING') return 'Reclaiming…';
   switch (state) {
     case 'ONLINE':
       return 'Connected';
@@ -35,7 +38,6 @@ function connectionLabel(state: MatchConnectionState): string {
 }
 
 function rejectionLabel(code: CommandRejectionCode): string {
-  if (code === 'CONNECTION_NOT_OWNER') return 'Another window took match control.';
   if (code === 'MATCH_NOT_READY') return 'Waiting for the opponent to connect.';
   if (code === 'STALE_STATE_VERSION') return 'The table changed. Fresh server state restored.';
   if (code === 'ILLEGAL_ACTION') return 'That move is no longer legal. Choose again.';
@@ -75,6 +77,7 @@ export function MatchSession({
   onSessionExpired(): void;
 }) {
   const [connectionState, setConnectionState] = useState<MatchConnectionState>('CONNECTING');
+  const [controlState, setControlState] = useState<MatchControlState>('OWNED');
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(null);
   const [clockAnchor, setClockAnchor] = useState<ServerClockAnchor | null>(null);
   const [rejection, setRejection] = useState<string | null>(null);
@@ -91,6 +94,7 @@ export function MatchSession({
 
   useEffect(() => {
     setConnectionState('CONNECTING');
+    setControlState('OWNED');
     setSnapshot(null);
     setClockAnchor(null);
     setRematch(IDLE_REMATCH);
@@ -104,11 +108,17 @@ export function MatchSession({
       onSnapshot: (next, serverTimeMs) => {
         setClockAnchor({ serverTimeMs, clientMonotonicMs: performance.now() });
         commitPresentationUpdate(() => setSnapshot(next));
+        setControlState('OWNED');
         setPending(false);
         setRejection(null);
       },
       onRejected: (code) => {
         setPending(false);
+        if (code === 'CONNECTION_NOT_OWNER') {
+          setControlState('REPLACED');
+          setRejection(null);
+          return;
+        }
         setRejection(rejectionLabel(code));
       },
       onProtocolError: () => {
@@ -121,7 +131,8 @@ export function MatchSession({
           onSessionExpiredRef.current();
           return;
         }
-        setRejection('Another window took match control.');
+        setControlState('REPLACED');
+        setRejection(null);
       },
     });
     realtime.current = connection;
@@ -166,7 +177,7 @@ export function MatchSession({
   }, [matchId, snapshot?.status]);
 
   const submitAction = (action: WireGameAction): boolean => {
-    if (pending) return false;
+    if (pending || controlState !== 'OWNED') return false;
     const sent = realtime.current?.sendAction(action) ?? false;
     if (sent) {
       setPending(true);
@@ -178,7 +189,7 @@ export function MatchSession({
   };
 
   const surrender = (): boolean => {
-    if (pending) return false;
+    if (pending || controlState !== 'OWNED') return false;
     const sent = realtime.current?.surrender() ?? false;
     if (sent) {
       setPending(true);
@@ -187,6 +198,17 @@ export function MatchSession({
       setRejection('The match connection is not ready to surrender yet.');
     }
     return sent;
+  };
+
+  const reclaimControl = (): void => {
+    if (controlState === 'RECLAIMING') return;
+    const requested = realtime.current?.requestControl() ?? false;
+    if (!requested) {
+      setRejection('This screen could not request match control yet.');
+      return;
+    }
+    setControlState('RECLAIMING');
+    setRejection(null);
   };
 
   const askForRematch = (): void => {
@@ -215,15 +237,21 @@ export function MatchSession({
     onExit();
   };
 
+  const connectionTone = controlState === 'OWNED' ? connectionState.toLowerCase() : 'stopped';
+  const connectionReady = connectionState === 'ONLINE' && controlState === 'OWNED';
+
   return (
     <main className="shell shell--match">
       <section className="match-shell" aria-labelledby="match-title">
         <header className="match-header match-header--table">
-          <div>
+          <div className="match-header__brand">
             <p className="eyebrow">Live table</p>
             <h1 id="match-title">CARAVAN</h1>
           </div>
           <div className="match-header__status">
+            <span className={`connection-pill connection-pill--${connectionTone}`}>
+              {connectionLabel(connectionState, controlState)}
+            </span>
             <button
               type="button"
               className="button button--quiet rules-help-button"
@@ -231,16 +259,32 @@ export function MatchSession({
             >
               How to play
             </button>
-            {snapshot !== null && (
-              <span className="state-version" title="Authoritative state version">
-                v{snapshot.stateVersion}
-              </span>
-            )}
-            <span className={`connection-pill connection-pill--${connectionState.toLowerCase()}`}>
-              {connectionLabel(connectionState)}
-            </span>
           </div>
         </header>
+
+        {controlState !== 'OWNED' && (
+          <section className="match-control-notice" aria-live="polite">
+            <div>
+              <strong>
+                {controlState === 'RECLAIMING'
+                  ? 'Moving match control to this screen…'
+                  : 'This account is playing from another CARAVAN screen.'}
+              </strong>
+              <span>
+                Only another window or device signed in as this account can replace this screen.
+                Your opponent has separate match control.
+              </span>
+            </div>
+            <button
+              type="button"
+              className="button"
+              disabled={controlState === 'RECLAIMING'}
+              onClick={reclaimControl}
+            >
+              {controlState === 'RECLAIMING' ? 'Connecting…' : 'Use this screen'}
+            </button>
+          </section>
+        )}
 
         {snapshot === null ? (
           <section className="panel match-loading">
@@ -257,21 +301,12 @@ export function MatchSession({
             <MatchDeadlines snapshot={snapshot} clockAnchor={clockAnchor} />
             <CardTable
               snapshot={snapshot}
-              connectionReady={connectionState === 'ONLINE'}
+              connectionReady={connectionReady}
               pending={pending}
-              rejection={rejection}
+              rejection={controlState === 'OWNED' ? rejection : null}
               onAction={submitAction}
               onSurrender={surrender}
             />
-
-            {rejection?.includes('Another window') === true && (
-              <section className="panel control-recovery">
-                <p>{rejection}</p>
-                <button className="button" onClick={() => realtime.current?.requestControl()}>
-                  Take control here
-                </button>
-              </section>
-            )}
 
             {snapshot.status === 'FINISHED' && (
               <MatchResult
