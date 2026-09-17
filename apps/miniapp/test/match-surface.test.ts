@@ -2,12 +2,12 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../src/pr23.css', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../src/match-surface.css', import.meta.url), 'utf8');
 const matchSession = readFileSync(new URL('../src/MatchSession.tsx', import.meta.url), 'utf8');
 
 describe('PR23 mobile match surface', () => {
   it('loads the stabilization overrides after the existing match styles', () => {
-    expect(main.indexOf("import './pr23.css';")).toBeGreaterThan(
+    expect(main.indexOf("import './match-surface.css';")).toBeGreaterThan(
       main.indexOf("import './hardening.css';"),
     );
   });
