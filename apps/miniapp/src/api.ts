@@ -180,12 +180,11 @@ let bootstrapPromise: Promise<AccountProfile> | undefined;
 
 export function bootstrapAccount(initData: string): Promise<AccountProfile> {
   if (bootstrapPromise === undefined) {
-    const attempt = currentAccount().catch((error: unknown) => {
-      if (error instanceof ApiError && error.status === 401 && initData.length > 0) {
-        return authenticateTelegram(initData);
-      }
-      throw error;
-    });
+    // A Telegram launch must bind the application session to the identity Telegram
+    // actually launched us for. Telegram WebViews may preserve same-origin cookies
+    // across account switches, so a valid stale CARAVAN cookie must never outrank
+    // freshly supplied, server-verified initData.
+    const attempt = initData.length > 0 ? authenticateTelegram(initData) : currentAccount();
     bootstrapPromise = attempt.then(
       (account) => {
         bootstrapPromise = undefined;
