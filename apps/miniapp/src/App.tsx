@@ -19,6 +19,23 @@ export function App() {
     setAttempt((value) => value + 1);
   };
 
+  useEffect(
+    () =>
+      platform.subscribeLayout(({ stableViewportHeight, safeArea, contentSafeArea }) => {
+        const root = document.documentElement.style;
+        root.setProperty('--app-viewport-stable-height', `${stableViewportHeight}px`);
+        for (const edge of ['top', 'right', 'bottom', 'left'] as const) {
+          const environmentInset = `env(safe-area-inset-${edge}, 0px)`;
+          root.setProperty(`--app-safe-${edge}`, `max(${safeArea[edge]}px, ${environmentInset})`);
+          root.setProperty(
+            `--app-content-safe-${edge}`,
+            `max(${contentSafeArea[edge]}px, ${environmentInset})`,
+          );
+        }
+      }),
+    [],
+  );
+
   useEffect(() => {
     platform.ready();
     platform.expand();
@@ -46,7 +63,6 @@ export function App() {
   if (state.status === 'ready') {
     return (
       <Play
-        account={state.account}
         launchContext={parseLaunchParam(platform.launchParam())}
         onSessionExpired={retryBootstrap}
       />
