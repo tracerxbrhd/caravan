@@ -79,7 +79,9 @@ describe('production Telegram wiring', () => {
   it('accepts Telegram canonicalizing the root menu-button URL with a trailing slash', async () => {
     const fake = fakeAdmin({ menuButtonUrl: 'https://caravan.example.com/' });
 
-    await expect(configureProductionTelegram(productionConfig(), fake.admin)).resolves.toMatchObject({
+    await expect(
+      configureProductionTelegram(productionConfig(), fake.admin),
+    ).resolves.toMatchObject({
       menuButtonUrl: 'https://caravan.example.com',
     });
   });
