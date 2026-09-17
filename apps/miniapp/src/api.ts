@@ -41,13 +41,15 @@ export class ResponseValidationError extends Error {
 }
 
 async function request(path: string, init?: RequestInit): Promise<unknown> {
+  const headers = new Headers(init?.headers);
+  if (init?.body !== undefined && init.body !== null && !headers.has('content-type')) {
+    headers.set('content-type', 'application/json');
+  }
+
   const response = await fetch(path, {
     ...init,
     credentials: 'include',
-    headers: {
-      'content-type': 'application/json',
-      ...init?.headers,
-    },
+    headers,
   });
 
   let payload: unknown;

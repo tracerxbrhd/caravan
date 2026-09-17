@@ -17,7 +17,6 @@ import {
   joinMatchmaking,
   leaveMatchmaking,
   matchmakingStatus,
-  type AccountProfile,
 } from './api.js';
 import { MatchSession } from './MatchSession.js';
 import { platform } from './platform.js';
@@ -53,6 +52,7 @@ function friendlyError(error: unknown): string {
       return 'That challenge has expired.';
     case 'CHALLENGE_NOT_FOUND':
       return 'That challenge is no longer available.';
+    case 'MATCH_ALREADY_ACTIVE':
     case 'ACTIVE_MATCH_CONFLICT':
       return 'You already have an active match.';
     case 'CHALLENGE_UNAVAILABLE':
@@ -69,11 +69,9 @@ function isSessionExpired(error: unknown): boolean {
 }
 
 export function Play({
-  account,
   launchContext,
   onSessionExpired,
 }: {
-  account: AccountProfile;
   launchContext: LaunchContext;
   onSessionExpired(): void;
 }) {
@@ -268,10 +266,6 @@ export function Play({
           <div>
             <p className="eyebrow">Frontier table</p>
             <h1 id="play-title">CARAVAN</h1>
-          </div>
-          <div className="identity-chip">
-            <span className="identity-chip__label">Signed in</span>
-            <strong>{account.displayName}</strong>
           </div>
         </header>
 

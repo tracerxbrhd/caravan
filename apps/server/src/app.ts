@@ -27,10 +27,34 @@ export interface BuildServerOptions {
   readonly matchService?: MatchService;
 }
 
+function structuredErrorCode(error: unknown): string | undefined {
+  if (
+    typeof error !== 'object' ||
+    error === null ||
+    !('code' in error) ||
+    typeof error.code !== 'string'
+  ) {
+    return undefined;
+  }
+  return error.code;
+}
+
 function publicErrorCode(error: unknown): string {
   if (error instanceof z.ZodError) return 'INVALID_INPUT';
+  if (structuredErrorCode(error) === 'FST_ERR_CTP_EMPTY_JSON_BODY') return 'INVALID_INPUT';
   if (!(error instanceof Error)) return 'INTERNAL_ERROR';
   return /^[A-Z_]+$/.test(error.message) ? error.message : 'INTERNAL_ERROR';
+}
+
+function internalErrorDetails(error: unknown): Record<string, string> | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const details: Record<string, string> = {
+    name: error.name,
+    message: error.message,
+  };
+  const code = structuredErrorCode(error);
+  if (code !== undefined) details.code = code;
+  return details;
 }
 
 function statusForError(code: string): number {
@@ -95,7 +119,15 @@ export async function buildServer(pool: pg.Pool, config: Config, options: BuildS
 
   app.setErrorHandler((error, request, reply) => {
     const code = publicErrorCode(error);
-    app.log.warn({ code, path: request.routeOptions.url }, 'Request rejected');
+    const internalError = code === 'INTERNAL_ERROR' ? internalErrorDetails(error) : undefined;
+    app.log.warn(
+      {
+        code,
+        path: request.routeOptions.url,
+        ...(internalError === undefined ? {} : { internalError }),
+      },
+      'Request rejected',
+    );
     return reply.code(statusForError(code)).send({ code });
   });
 
