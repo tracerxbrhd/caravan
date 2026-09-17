@@ -90,6 +90,18 @@ describeDatabase('authenticated match entry routes', () => {
     expect(rematch.json()).toEqual({ code: 'UNAUTHENTICATED' });
   });
 
+  it('classifies an advertised but empty JSON body as invalid input', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/challenges',
+      headers: { 'content-type': 'application/json' },
+      payload: '',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: 'INVALID_INPUT' });
+  });
+
   it('pairs two authenticated accounts through the casual HTTP API', async () => {
     const first = await authenticate(10_001, 'First');
     const second = await authenticate(10_002, 'Second');
