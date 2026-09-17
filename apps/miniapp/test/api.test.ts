@@ -83,6 +83,45 @@ describe('Mini App API boundary', () => {
     expect(init?.body).toBe(JSON.stringify({ initData: 'telegram-init-data' }));
   });
 
+  it('binds bootstrap to fresh Telegram identity instead of trusting a stale cookie session', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      jsonResponse({
+        id: '00000000-0000-4000-8000-0000000000bb',
+        displayName: 'Account B',
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(bootstrapAccount('signed-init-data-for-account-b')).resolves.toEqual({
+      id: '00000000-0000-4000-8000-0000000000bb',
+      displayName: 'Account B',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [path, init] = fetchMock.mock.calls[0] ?? [];
+    expect(path).toBe('/api/auth/telegram');
+    expect(init?.method).toBe('POST');
+    expect(init?.body).toBe(JSON.stringify({ initData: 'signed-init-data-for-account-b' }));
+  });
+
+  it('restores the existing application session only when Telegram initData is unavailable', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      jsonResponse({
+        id: '00000000-0000-4000-8000-0000000000aa',
+        displayName: 'Existing Session',
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(bootstrapAccount('')).resolves.toEqual({
+      id: '00000000-0000-4000-8000-0000000000aa',
+      displayName: 'Existing Session',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/me');
+  });
+
   it('does not permanently cache a failed account bootstrap attempt', async () => {
     let calls = 0;
     vi.stubGlobal(
