@@ -7,6 +7,7 @@ import './motion.css';
 import './rules.css';
 import './result.css';
 import './hardening.css';
+import './pr23.css';
 
 const root = document.getElementById('root');
 
