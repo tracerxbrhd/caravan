@@ -7,6 +7,7 @@ import {
   rematchStatusSchema,
   type AcceptedChallenge,
   type ChallengeId,
+  type ChallengeResolution,
   type ChallengeView,
   type CreateChallengeResponse,
   type InviteToken,
@@ -161,7 +162,7 @@ export async function declineChallenge(inviteToken: InviteToken): Promise<void> 
   }
 }
 
-export function cancelChallenge(challengeId: ChallengeId) {
+export function cancelChallenge(challengeId: ChallengeId): Promise<ChallengeResolution> {
   return requestParsed(
     `/api/challenges/${encodeURIComponent(challengeId)}/cancel`,
     challengeResolutionSchema,
