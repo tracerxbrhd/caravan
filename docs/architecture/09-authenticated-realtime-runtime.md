@@ -75,9 +75,11 @@ Control ownership is process-local transport state. Match state, connection flag
 
 Transport readiness is deliberately not a pure game-engine or generic `MatchService` rule.
 
-Before a match has started, the realtime adapter rejects state-changing client commands with `MATCH_NOT_READY`. The first authoritative turn deadline is created only after both seats have connected, so the first arriving client cannot play before its opponent has entered.
+Before a match has started, the first arriving client must not be able to play cards. `GAME_ACTION` commands are therefore rejected with `MATCH_NOT_READY` while the authoritative `turnDeadlineAtMs` is still `null`. The first turn deadline is created only after both seats have connected.
 
-This gate applies only to the pre-start state where `turnDeadlineAtMs` is still `null`. Once the match has started, a later opponent disconnect does not freeze the connected active player: that player may still submit a legal action while the disconnected seat is governed independently by its reconnect deadline. This avoids a fairness failure where the server would keep an active player's turn clock running while simultaneously refusing that player's move.
+`SURRENDER` is intentionally different. It is a server lifecycle command, not a card-game move, and remains available to the controlling participant before initial readiness. This prevents durable match recovery from trapping a player in a previously created match when the other participant never connects or never reopens the Mini App. The surrender still goes through normal authenticated ownership, state-version, idempotency and durable persistence checks.
+
+Once the match has started, a later opponent disconnect does not freeze the connected active player: that player may still submit a legal action while the disconnected seat is governed independently by its reconnect deadline. This avoids a fairness failure where the server would keep an active player's turn clock running while simultaneously refusing that player's move.
 
 ## Hidden-information broadcasting
 
@@ -169,7 +171,8 @@ Automated coverage protects at minimum:
 - restart recovery semantics;
 - authenticated WebSocket handshake;
 - `RESYNC` participant ownership;
-- `MATCH_NOT_READY` before the initial match start;
+- `GAME_ACTION` rejection with `MATCH_NOT_READY` before the initial match start;
+- pre-start `SURRENDER` remaining available so a recovered waiting match can be finalized;
 - legal active-player commands remaining accepted while the opponent is inside reconnect grace;
 - controlling-socket takeover and stale-socket rejection;
 - state-changing command persistence before peer broadcast;
@@ -182,16 +185,13 @@ Database-backed realtime integration coverage is mandatory in CI when `CARAVAN_R
 
 ## Current non-goals
 
-This PR does not implement:
+This layer does not implement:
 
-- casual matchmaking;
-- private challenges/invites;
-- Telegram bot runtime;
-- client-side WebSocket/reconnect UI;
-- rematch flow;
+- client-authoritative card rules;
+- browser/native authentication;
 - ranked/rating/progression systems;
 - spectator sockets;
 - chat/reactions;
 - horizontal multi-process socket coordination.
 
-Those should build on this authenticated realtime boundary rather than replacing it with a second gameplay transport.
+Matchmaking, private challenges, Mini App recovery UI and rematches build on this authenticated realtime boundary rather than replacing it with a second gameplay transport.
