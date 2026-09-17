@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, declineChallenge } from '../src/api.js';
+import { declineChallenge } from '../src/api.js';
 
 const INVITE_TOKEN = 'A'.repeat(43);
 
@@ -36,10 +36,14 @@ describe('inbound challenge decline', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/challenges/decline', expect.any(Object));
   });
 
-  it.each(['CHALLENGE_NOT_FOUND', 'CHALLENGE_EXPIRED', 'CHALLENGE_UNAVAILABLE'])(
+  it.each([
+    ['CHALLENGE_NOT_FOUND', 404],
+    ['CHALLENGE_EXPIRED', 410],
+    ['CHALLENGE_UNAVAILABLE', 409],
+  ] as const)(
     'treats %s as an already-closed invitation instead of trapping the player on an error screen',
-    async (code) => {
-      vi.stubGlobal('fetch', vi.fn(async () => response(code === 'CHALLENGE_NOT_FOUND' ? 404 : 409, { code })));
+    async (code, status) => {
+      vi.stubGlobal('fetch', vi.fn(async () => response(status, { code })));
 
       await expect(declineChallenge(INVITE_TOKEN)).resolves.toBeUndefined();
     },
@@ -48,8 +52,9 @@ describe('inbound challenge decline', () => {
   it('still surfaces authentication failures so the normal session recovery path runs', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response(401, { code: 'UNAUTHENTICATED' })));
 
-    await expect(declineChallenge(INVITE_TOKEN)).rejects.toEqual(
-      expect.objectContaining<ApiError>({ status: 401, code: 'UNAUTHENTICATED' }),
-    );
+    await expect(declineChallenge(INVITE_TOKEN)).rejects.toMatchObject({
+      status: 401,
+      code: 'UNAUTHENTICATED',
+    });
   });
 });
