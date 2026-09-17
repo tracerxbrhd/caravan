@@ -1,4 +1,7 @@
-import { challengeResolutionSchema, createChallengeResponseSchema } from '@caravan/protocol';
+import {
+  challengeResolutionSchema,
+  createChallengeResponseSchema,
+} from '@caravan/protocol';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   SESSION_COOKIE_NAME,
