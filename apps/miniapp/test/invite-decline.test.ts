@@ -43,14 +43,20 @@ describe('inbound challenge decline', () => {
   ] as const)(
     'treats %s as an already-closed invitation instead of trapping the player on an error screen',
     async (code, status) => {
-      vi.stubGlobal('fetch', vi.fn(async () => response(status, { code })));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => response(status, { code })),
+      );
 
       await expect(declineChallenge(INVITE_TOKEN)).resolves.toBeUndefined();
     },
   );
 
   it('still surfaces authentication failures so the normal session recovery path runs', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => response(401, { code: 'UNAUTHENTICATED' })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(401, { code: 'UNAUTHENTICATED' })),
+    );
 
     await expect(declineChallenge(INVITE_TOKEN)).rejects.toMatchObject({
       status: 401,
