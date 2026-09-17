@@ -143,7 +143,9 @@ export async function buildServer(pool: pg.Pool, config: Config, options: BuildS
     { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
     async (request, reply) => {
       const body = telegramAuthBodySchema.parse(request.body);
+      const previousSession = request.cookies[SESSION_COOKIE_NAME];
       const session = await authenticateTelegram(pool, config, body.initData);
+      await revokeSession(pool, previousSession);
       reply.setCookie(SESSION_COOKIE_NAME, session.token, {
         httpOnly: true,
         secure: config.NODE_ENV === 'production',

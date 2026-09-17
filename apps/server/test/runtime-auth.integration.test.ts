@@ -125,6 +125,47 @@ describeDatabase('authenticated server runtime', () => {
     expect(counts).toEqual({ accounts: 1, identities: 1, sessions: 2 });
   });
 
+  it('rebinds the browser cookie to the Telegram identity authenticated on the new launch', async () => {
+    const firstAuth = await app.inject({
+      method: 'POST',
+      url: '/api/auth/telegram',
+      payload: { initData: signedTelegramInitData({ userId: 1_001, firstName: 'Account A' }) },
+    });
+    expect(firstAuth.statusCode).toBe(200);
+    const firstProfile = profileSchema.parse(firstAuth.json());
+    const firstCookie = cookiePair(firstAuth.headers['set-cookie']);
+
+    const secondAuth = await app.inject({
+      method: 'POST',
+      url: '/api/auth/telegram',
+      headers: { cookie: firstCookie },
+      payload: { initData: signedTelegramInitData({ userId: 1_002, firstName: 'Account B' }) },
+    });
+    expect(secondAuth.statusCode).toBe(200);
+    const secondProfile = profileSchema.parse(secondAuth.json());
+    const secondCookie = cookiePair(secondAuth.headers['set-cookie']);
+
+    expect(secondProfile.id).not.toBe(firstProfile.id);
+    expect(secondProfile.displayName).toBe('Account B');
+    expect(secondCookie).not.toBe(firstCookie);
+
+    const stale = await app.inject({
+      method: 'GET',
+      url: '/api/me',
+      headers: { cookie: firstCookie },
+    });
+    expect(stale.statusCode).toBe(401);
+    expect(errorSchema.parse(stale.json())).toEqual({ code: 'UNAUTHENTICATED' });
+
+    const me = await app.inject({
+      method: 'GET',
+      url: '/api/me',
+      headers: { cookie: secondCookie },
+    });
+    expect(me.statusCode).toBe(200);
+    expect(profileSchema.parse(me.json())).toEqual(secondProfile);
+  });
+
   it('revokes only the presented session on logout and blocks disabled accounts from reauthenticating', async () => {
     const raw = signedTelegramInitData({ userId: 999, firstName: 'Scout' });
     const auth = await app.inject({
