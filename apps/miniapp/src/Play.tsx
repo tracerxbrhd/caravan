@@ -64,12 +64,18 @@ function friendlyError(error: unknown): string {
   }
 }
 
+function isSessionExpired(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
+}
+
 export function Play({
   account,
   launchContext,
+  onSessionExpired,
 }: {
   account: AccountProfile;
   launchContext: LaunchContext;
+  onSessionExpired(): void;
 }) {
   const [flow, setFlow] = useState<FlowState>(() => initialFlow(launchContext));
   const [busy, setBusy] = useState(false);
@@ -88,14 +94,16 @@ export function Play({
           setFlow({ kind: 'QUEUE', leaseExpiresAtMs: status.leaseExpiresAtMs });
         }
       })
-      .catch(() => undefined)
+      .catch((error: unknown) => {
+        if (active && isSessionExpired(error)) onSessionExpired();
+      })
       .finally(() => {
         if (active) setRecoveryChecked(true);
       });
     return () => {
       active = false;
     };
-  }, [flow.kind, launchContext.kind, recoveryChecked]);
+  }, [flow.kind, launchContext.kind, onSessionExpired, recoveryChecked]);
 
   useEffect(() => {
     if (flow.kind !== 'QUEUE') return;
@@ -117,8 +125,13 @@ export function Play({
           return;
         }
         setFlow({ kind: 'HOME', notice: 'Matchmaking ended. You can queue again.' });
-      } catch {
-        if (active) timer = setTimeout(() => void heartbeat(), 5_000);
+      } catch (error) {
+        if (!active) return;
+        if (isSessionExpired(error)) {
+          onSessionExpired();
+          return;
+        }
+        timer = setTimeout(() => void heartbeat(), 5_000);
       }
     };
 
@@ -127,7 +140,7 @@ export function Play({
       active = false;
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [flow.kind]);
+  }, [flow.kind, onSessionExpired]);
 
   useEffect(() => {
     if (flow.kind !== 'OUTBOUND_CHALLENGE') return;
@@ -148,8 +161,13 @@ export function Play({
           return;
         }
         timer = setTimeout(() => void poll(), 2_000);
-      } catch {
-        if (active) timer = setTimeout(() => void poll(), 4_000);
+      } catch (error) {
+        if (!active) return;
+        if (isSessionExpired(error)) {
+          onSessionExpired();
+          return;
+        }
+        timer = setTimeout(() => void poll(), 4_000);
       }
     };
 
@@ -158,7 +176,7 @@ export function Play({
       active = false;
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [flow.kind, flow.kind === 'OUTBOUND_CHALLENGE' ? flow.challenge.id : null]);
+  }, [flow.kind, flow.kind === 'OUTBOUND_CHALLENGE' ? flow.challenge.id : null, onSessionExpired]);
 
   const opponentCopy = useMemo(() => {
     if (flow.kind !== 'OUTBOUND_CHALLENGE') return null;
@@ -171,6 +189,7 @@ export function Play({
         matchId={flow.matchId}
         onExit={() => setFlow({ kind: 'HOME' })}
         onRematch={(matchId) => setFlow({ kind: 'MATCH', matchId })}
+        onSessionExpired={onSessionExpired}
       />
     );
   }
@@ -181,6 +200,10 @@ export function Play({
     try {
       await operation();
     } catch (error) {
+      if (isSessionExpired(error)) {
+        onSessionExpired();
+        return;
+      }
       setFlow({ kind: 'ERROR', message: friendlyError(error) });
     } finally {
       setBusy(false);

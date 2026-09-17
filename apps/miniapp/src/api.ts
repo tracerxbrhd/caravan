@@ -177,11 +177,23 @@ export function cancelRematch(matchId: MatchId): Promise<RematchStatus> {
 let bootstrapPromise: Promise<AccountProfile> | undefined;
 
 export function bootstrapAccount(initData: string): Promise<AccountProfile> {
-  bootstrapPromise ??= currentAccount().catch((error: unknown) => {
-    if (error instanceof ApiError && error.status === 401 && initData.length > 0) {
-      return authenticateTelegram(initData);
-    }
-    throw error;
-  });
+  if (bootstrapPromise === undefined) {
+    const attempt = currentAccount().catch((error: unknown) => {
+      if (error instanceof ApiError && error.status === 401 && initData.length > 0) {
+        return authenticateTelegram(initData);
+      }
+      throw error;
+    });
+    bootstrapPromise = attempt.then(
+      (account) => {
+        bootstrapPromise = undefined;
+        return account;
+      },
+      (error: unknown) => {
+        bootstrapPromise = undefined;
+        throw error;
+      },
+    );
+  }
   return bootstrapPromise;
 }

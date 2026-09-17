@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted as the initial vertical-slice scope. This document describes what must exist before CARAVAN is considered genuinely playable with real users. It does not claim that any item is implemented yet.
+Accepted as the initial vertical-slice scope. The software path described here has been implemented through the first-playable hardening milestone, but CARAVAN must not be described as production-validated until the deployed build passes the real-account procedure in [`../development/first-playable-acceptance.md`](../development/first-playable-acceptance.md). This document remains the product acceptance contract rather than evidence that real-user validation has already happened.
 
 ## Goal
 

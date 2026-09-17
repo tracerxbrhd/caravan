@@ -10,7 +10,7 @@ class FakeWebSocket {
   sent: string[] = [];
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event: { code: number; reason: string }) => void) | null = null;
   onerror: (() => void) | null = null;
 
   constructor(readonly url: string) {
@@ -26,9 +26,9 @@ class FakeWebSocket {
     this.sent.push(value);
   }
 
-  close(): void {
+  close(code = 1000, reason = ''): void {
     this.readyState = 3;
-    this.onclose?.();
+    this.onclose?.({ code, reason });
   }
 }
 
@@ -67,7 +67,7 @@ describe('match realtime connection', () => {
     connection.close();
   });
 
-  it('reconnects with bounded backoff after socket loss', () => {
+  it('reconnects with bounded backoff after ordinary socket loss', () => {
     const states: string[] = [];
     const connection = connectMatch(
       MATCH_ID,
@@ -76,7 +76,7 @@ describe('match realtime connection', () => {
     );
     const first = FakeWebSocket.instances[0]!;
     first.open();
-    first.close();
+    first.close(1006);
     expect(states.at(-1)).toBe('RECONNECTING');
 
     vi.advanceTimersByTime(499);
@@ -84,5 +84,56 @@ describe('match realtime connection', () => {
     vi.advanceTimersByTime(1);
     expect(FakeWebSocket.instances).toHaveLength(2);
     connection.close();
+  });
+
+  it('pauses after control replacement and only reconnects when the player explicitly reclaims control', () => {
+    const states: string[] = [];
+    const stops: string[] = [];
+    const connection = connectMatch(
+      MATCH_ID,
+      {
+        onConnectionState: (state) => states.push(state),
+        onSnapshot: () => undefined,
+        onConnectionStopped: (reason) => stops.push(reason),
+      },
+      { url: 'ws://example/ws', reconnectBaseMs: 500 },
+    );
+    const first = FakeWebSocket.instances[0]!;
+    first.open();
+    first.close(4001, 'CONTROL_REPLACED');
+
+    vi.advanceTimersByTime(5_000);
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(states.at(-1)).toBe('STOPPED');
+    expect(stops).toEqual(['CONTROL_REPLACED']);
+
+    expect(connection.requestControl()).toBe(true);
+    expect(FakeWebSocket.instances).toHaveLength(2);
+    FakeWebSocket.instances[1]!.open();
+    expect(JSON.parse(FakeWebSocket.instances[1]!.sent[0]!)).toMatchObject({ type: 'RESYNC' });
+    connection.close();
+  });
+
+  it('stops permanently when the authenticated session expires', () => {
+    const states: string[] = [];
+    const stops: string[] = [];
+    const connection = connectMatch(
+      MATCH_ID,
+      {
+        onConnectionState: (state) => states.push(state),
+        onSnapshot: () => undefined,
+        onConnectionStopped: (reason) => stops.push(reason),
+      },
+      { url: 'ws://example/ws', reconnectBaseMs: 500 },
+    );
+    const socket = FakeWebSocket.instances[0]!;
+    socket.open();
+    socket.close(1008, 'SESSION_EXPIRED');
+
+    vi.advanceTimersByTime(5_000);
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(states.at(-1)).toBe('STOPPED');
+    expect(stops).toEqual(['SESSION_EXPIRED']);
+    expect(connection.requestControl()).toBe(false);
   });
 });

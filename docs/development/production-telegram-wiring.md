@@ -72,6 +72,8 @@ The command is idempotent and may be rerun after changing supported Telegram pro
 
 After the first successful production wiring, use **two real Telegram accounts**. Do not use client-side mocks for this acceptance check.
 
+This section verifies the Telegram wiring itself. For the complete first-playable release decision — deadlines, reconnect, controlling-client replacement, session recovery, timeout/result/rematch, casual matchmaking, restart recovery and mobile sanity — continue with [`first-playable-acceptance.md`](first-playable-acceptance.md).
+
 Account A:
 
 1. open the production bot;
