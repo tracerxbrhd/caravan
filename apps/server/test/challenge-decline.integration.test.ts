@@ -1,14 +1,6 @@
-import {
-  challengeResolutionSchema,
-  createChallengeResponseSchema,
-} from '@caravan/protocol';
+import { challengeResolutionSchema, createChallengeResponseSchema } from '@caravan/protocol';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  SESSION_COOKIE_NAME,
-  buildServer,
-  createPool,
-  migrateDatabase,
-} from '../src/index.js';
+import { SESSION_COOKIE_NAME, buildServer, createPool, migrateDatabase } from '../src/index.js';
 import { signedTelegramInitData, testConfig } from './auth-fixtures.js';
 
 const databaseUrl = process.env.DATABASE_URL;
