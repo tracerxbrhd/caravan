@@ -122,9 +122,11 @@ The intended deployment remains same-origin for Mini App, HTTP API, and WebSocke
 
 Telegram access lives behind `apps/miniapp/src/platform.ts`.
 
-The Mini App first attempts to restore an existing CARAVAN session with `/api/me`. Only when that returns unauthenticated does it submit Telegram `initData`.
+When Telegram supplies raw `initData`, the Mini App authenticates that launch through `/api/auth/telegram` before using the application session. A pre-existing same-origin `caravan_session` cookie is not allowed to outrank fresh Telegram launch identity, because Telegram WebViews may preserve cookies while the user switches Telegram accounts. The backend-validated `initData` therefore rebinds the browser cookie to the correct internal account for the current launch.
 
-This keeps Telegram APIs out of general application/game UI code and avoids issuing a new server session on every React remount when an existing cookie is valid.
+Only when Telegram `initData` is unavailable does the Mini App restore an existing CARAVAN application session through `/api/me`. This fallback preserves a provider-independent path for non-Telegram/web/native clients without weakening Telegram account switching correctness.
+
+Telegram identity remains server-verified; the client does not compare or trust `initDataUnsafe.user` as an authorization decision.
 
 Vite proxies `/api` to the local backend during development. Client-side realtime transport is a later Mini App layer.
 
@@ -153,7 +155,8 @@ Automated coverage protects:
 - internal account creation;
 - Telegram identity mapping;
 - session token hashing;
-- `/api/me` session restoration;
+- `/api/me` session restoration when Telegram launch data is unavailable;
+- fresh Telegram launch identity rebinding an existing browser cookie to the correct internal account;
 - repeated Telegram login resolving the same account;
 - logout session revocation;
 - disabled-account authentication rejection.
