@@ -287,7 +287,11 @@ export async function installRealtimeRuntime(
       await rejectWithoutControl(connection, command);
       return;
     }
-    if (before.status === 'ACTIVE' && before.turnDeadlineAtMs === null) {
+    if (
+      command.type !== 'SURRENDER' &&
+      before.status === 'ACTIVE' &&
+      before.turnDeadlineAtMs === null
+    ) {
       send(
         connection.socket,
         commandRejectedMessageSchema.parse({
