@@ -5,7 +5,7 @@
 		X-Content-Type-Options nosniff
 		Referrer-Policy no-referrer
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
-		Content-Security-Policy "default-src 'self'; base-uri 'none'; object-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: wss:; frame-ancestors https://web.telegram.org https://*.telegram.org"
+		Content-Security-Policy "default-src 'self'; base-uri 'none'; object-src 'none'; script-src 'self' https://telegram.org; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: wss:; frame-ancestors https://web.telegram.org https://*.telegram.org"
 	}
 
 	handle /telegram/webhook {
