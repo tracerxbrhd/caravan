@@ -56,11 +56,15 @@ A fresh snapshot replaces the clock anchor. The client never sends its countdown
 
 Application HTTP polling/actions and realtime may both discover that a session is no longer valid.
 
-A `401` from matchmaking/challenge/rematch flows or a realtime `SESSION_EXPIRED` close returns the Mini App to the existing account bootstrap. Bootstrap then:
+A real Telegram launch carrying raw `initData` first re-authenticates that Telegram identity through the backend. This deliberately replaces any pre-existing same-origin CARAVAN cookie, because Telegram WebViews can preserve cookies while the user switches Telegram accounts. A stale application session from account A must never cause a launch by account B to act as account A.
 
-1. tries the opaque application session;
-2. if unauthorized and Telegram `initData` is present, validates it again through the backend authentication endpoint;
-3. if Telegram authentication cannot establish a session, shows the Telegram-required state rather than continuing background polling.
+When Telegram `initData` is unavailable, bootstrap may restore the opaque application session through `/api/me`. This is the non-Telegram/provider-independent fallback.
+
+A `401` from matchmaking/challenge/rematch flows or a realtime `SESSION_EXPIRED` close returns the Mini App to the same bootstrap policy:
+
+1. if Telegram `initData` is present, validate it again through the backend authentication endpoint and bind a fresh application session to that verified identity;
+2. otherwise try the existing opaque application session;
+3. if neither path establishes a session, show the Telegram-required/error state rather than continuing background polling.
 
 The bootstrap promise is cached only while one attempt is in flight. Success or failure clears that cache so a later retry/session refresh performs a real authorization check.
 
@@ -108,7 +112,7 @@ Automated verification must continue to cover:
 - reconnect/restart/finalization behavior;
 - terminal Mini App WebSocket close policy;
 - deadline presentation derivation;
-- authentication bootstrap retry;
+- authentication bootstrap retry and Telegram account rebinding;
 - production image builds, Caddy validation and clean Compose startup;
 - production dependency audit at the repository gate.
 
