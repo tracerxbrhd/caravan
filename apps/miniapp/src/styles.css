@@ -11,6 +11,11 @@
   background: #120f0b;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  --app-viewport-stable-height: 100dvh;
+  --app-content-safe-top: env(safe-area-inset-top, 0px);
+  --app-content-safe-right: env(safe-area-inset-right, 0px);
+  --app-content-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-content-safe-left: env(safe-area-inset-left, 0px);
 }
 
 * {
@@ -37,11 +42,11 @@ button {
 }
 
 .shell {
-  min-height: 100dvh;
-  padding-top: max(22px, env(safe-area-inset-top));
-  padding-right: max(18px, env(safe-area-inset-right));
-  padding-bottom: max(24px, env(safe-area-inset-bottom));
-  padding-left: max(18px, env(safe-area-inset-left));
+  min-height: var(--app-viewport-stable-height, 100dvh);
+  padding-top: calc(22px + var(--app-content-safe-top));
+  padding-right: calc(18px + var(--app-content-safe-right));
+  padding-bottom: calc(24px + var(--app-content-safe-bottom));
+  padding-left: calc(18px + var(--app-content-safe-left));
 }
 .shell--centered {
   display: grid;
@@ -114,29 +119,6 @@ h2 {
   color: #8f826f;
   font-size: 0.82rem;
   line-height: 1.45;
-}
-
-.identity-chip {
-  max-width: 45%;
-  padding: 9px 12px;
-  border: 1px solid rgba(200, 169, 118, 0.25);
-  border-radius: 12px;
-  background: rgba(20, 16, 12, 0.55);
-  text-align: right;
-}
-.identity-chip__label {
-  display: block;
-  margin-bottom: 2px;
-  color: #8f826f;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.11em;
-}
-.identity-chip strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .action-stack {
@@ -335,9 +317,6 @@ h2 {
   .play-header,
   .match-header {
     align-items: center;
-  }
-  .identity-chip {
-    max-width: 48%;
   }
   .match-summary {
     grid-template-columns: 1fr;
