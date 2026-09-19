@@ -69,70 +69,82 @@ export function MatchResult({
   const normalFinish = snapshot.result?.reason === 'ROUTES';
 
   return (
-    <section className="panel match-result" aria-labelledby="match-result-title" aria-live="polite">
-      <div className="match-result__heading">
-        <div>
-          <span className="section-kicker">Final result</span>
-          <h2 id="match-result-title">{resultTitle(snapshot)}</h2>
-          <p className="muted">{resultReason(snapshot)}</p>
+    <div className="match-result-overlay">
+      <div className="match-result-backdrop" aria-hidden="true" />
+      <section
+        className="panel match-result"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="match-result-title"
+        aria-describedby="match-result-reason"
+        aria-live="polite"
+      >
+        <div className="match-result__heading">
+          <div>
+            <span className="section-kicker">Final result</span>
+            <h2 id="match-result-title">{resultTitle(snapshot)}</h2>
+            <p className="muted" id="match-result-reason">
+              {resultReason(snapshot)}
+            </p>
+          </div>
+          <span className="match-result__stamp" aria-hidden="true">
+            Final
+          </span>
         </div>
-        <span className="match-result__stamp" aria-hidden="true">
-          Final
-        </span>
-      </div>
 
-      {normalFinish && (
-        <div className="result-lanes" aria-label="Final trade lane outcomes">
-          {snapshot.game.laneOwners.map((owner, index) => {
-            const ownValue = snapshot.game.players[viewer].routes[index]?.value ?? 0;
-            const opponentValue = snapshot.game.players[opponent].routes[index]?.value ?? 0;
-            return (
-              <article className="result-lane" key={index}>
-                <span className="result-lane__name">Lane {index + 1}</span>
-                <strong>{laneOwnerLabel(owner, viewer)}</strong>
-                <span className="result-lane__score">
-                  {ownValue} <small>you</small> · {opponentValue} <small>opponent</small>
-                </span>
-              </article>
-            );
-          })}
+        {normalFinish && (
+          <div className="result-lanes" aria-label="Final trade lane outcomes">
+            {snapshot.game.laneOwners.map((owner, index) => {
+              const ownValue = snapshot.game.players[viewer].routes[index]?.value ?? 0;
+              const opponentValue = snapshot.game.players[opponent].routes[index]?.value ?? 0;
+              return (
+                <article className="result-lane" key={index}>
+                  <span className="result-lane__name">Lane {index + 1}</span>
+                  <strong>{laneOwnerLabel(owner, viewer)}</strong>
+                  <span className="result-lane__score">
+                    {ownValue} <small>you</small> · {opponentValue} <small>opponent</small>
+                  </span>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {snapshot.result?.reason === 'NO_CONTEST' && (
+          <p className="notice notice--warn">
+            No player is blamed for this result. You can return to Play or try the matchup again.
+          </p>
+        )}
+
+        <div className="rematch-card">
+          <div>
+            <span className="section-kicker">Same opponent</span>
+            <p>{rematchCopy(rematch)}</p>
+            {rematchError !== null && <p className="table-rejection">{rematchError}</p>}
+          </div>
+          <button
+            className="button button--primary"
+            disabled={
+              rematchBusy ||
+              rematch.status === 'MATCH_FOUND' ||
+              (rematch.status === 'WAITING' && rematch.requestedBy === 'YOU')
+            }
+            onClick={onRematch}
+          >
+            {rematch.status === 'WAITING'
+              ? rematch.requestedBy === 'OPPONENT'
+                ? 'Accept rematch'
+                : 'Waiting for opponent…'
+              : rematch.status === 'MATCH_FOUND'
+                ? 'Starting rematch…'
+                : 'Play again'}
+          </button>
         </div>
-      )}
 
-      {snapshot.result?.reason === 'NO_CONTEST' && (
-        <p className="notice notice--warn">
-          No player is blamed for this result. You can return to Play or try the matchup again.
-        </p>
-      )}
-
-      <div className="rematch-card">
-        <div>
-          <span className="section-kicker">Same opponent</span>
-          <p>{rematchCopy(rematch)}</p>
-          {rematchError !== null && <p className="table-rejection">{rematchError}</p>}
-        </div>
-        <button
-          className="button button--primary"
-          disabled={
-            rematchBusy ||
-            rematch.status === 'MATCH_FOUND' ||
-            (rematch.status === 'WAITING' && rematch.requestedBy === 'YOU')
-          }
-          onClick={onRematch}
-        >
-          {rematch.status === 'WAITING'
-            ? rematch.requestedBy === 'OPPONENT'
-              ? 'Accept rematch'
-              : 'Waiting for opponent…'
-            : rematch.status === 'MATCH_FOUND'
-              ? 'Starting rematch…'
-              : 'Play again'}
+        <button className="button button--quiet match-result__exit" onClick={onExit}>
+          Return to Play
         </button>
-      </div>
-
-      <button className="button button--quiet match-result__exit" onClick={onExit}>
-        Return to Play
-      </button>
-    </section>
+      </section>
+    </div>
   );
 }
