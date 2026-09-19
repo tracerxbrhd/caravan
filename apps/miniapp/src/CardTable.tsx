@@ -500,6 +500,15 @@ export function CardTable({
   const legalActions = game.legalActions;
   const selectable = useMemo(() => new Set(selectableCardIds(legalActions)), [legalActions]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [activeHandCardId, setActiveHandCardId] = useState<string | null>(game.hand[0]?.id ?? null);
+  const [handExpanded, setHandExpanded] = useState(false);
+  const [handSwipeX, setHandSwipeX] = useState(0);
+  const [handDrag, setHandDrag] = useState<HandDragVisual>({
+    cardId: null,
+    x: 0,
+    y: 0,
+    dragging: false,
+  });
   const [confirmDisband, setConfirmDisband] = useState<RouteIndex | null>(null);
   const [confirmSurrender, setConfirmSurrender] = useState(false);
   const [preferences, setPreferences] = useState<PresentationPreferences>(
@@ -507,17 +516,33 @@ export function CardTable({
   );
   const preferencesRef = useRef(preferences);
   const previousSnapshot = useRef<MatchSnapshot | null>(null);
+  const handPointer = useRef<HandPointerSession | null>(null);
   preferencesRef.current = preferences;
 
   const interaction = useMemo(
     () => (selectedCardId === null ? null : cardInteraction(legalActions, selectedCardId)),
     [legalActions, selectedCardId],
   );
+  const activeHandIndex = Math.max(
+    0,
+    game.hand.findIndex((card) => card.id === activeHandCardId),
+  );
+  const activeHandCard = game.hand[activeHandIndex] ?? null;
+  const selectedHandCard = game.hand.find((card) => card.id === selectedCardId) ?? null;
 
   useEffect(() => {
     if (selectedCardId !== null && !selectable.has(selectedCardId)) setSelectedCardId(null);
+    if (game.hand.length === 0) {
+      setActiveHandCardId(null);
+      setHandExpanded(false);
+    } else if (!game.hand.some((card) => card.id === activeHandCardId)) {
+      setActiveHandCardId(game.hand[0]?.id ?? null);
+    }
+    setHandSwipeX(0);
+    setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
+    handPointer.current = null;
     setConfirmDisband(null);
-  }, [game.actionSequence, selectedCardId, selectable]);
+  }, [game.actionSequence, game.hand, activeHandCardId, selectedCardId, selectable]);
 
   useEffect(() => {
     const cue = deriveTableFeedbackCue(previousSnapshot.current, snapshot);
@@ -530,6 +555,8 @@ export function CardTable({
   const disabled = !connectionReady || pending || !matchReady;
   const yourTurn = matchReady && game.activePlayer === viewer;
   const hapticsAvailable = platform.hapticsAvailable();
+  const activeHandPlayable =
+    activeHandCard !== null && selectable.has(activeHandCard.id) && yourTurn && !disabled;
 
   const updatePreferences = (next: PresentationPreferences): void => {
     preferencesRef.current = next;
