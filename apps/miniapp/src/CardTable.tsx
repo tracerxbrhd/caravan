@@ -531,18 +531,21 @@ export function CardTable({
   const selectedHandCard = game.hand.find((card) => card.id === selectedCardId) ?? null;
 
   useEffect(() => {
-    if (selectedCardId !== null && !selectable.has(selectedCardId)) setSelectedCardId(null);
-    if (game.hand.length === 0) {
-      setActiveHandCardId(null);
-      setHandExpanded(false);
-    } else if (!game.hand.some((card) => card.id === activeHandCardId)) {
-      setActiveHandCardId(game.hand[0]?.id ?? null);
-    }
+    setSelectedCardId((current) =>
+      current !== null && !selectable.has(current) ? null : current,
+    );
+    setActiveHandCardId((current) => {
+      if (game.hand.length === 0) return null;
+      return current !== null && game.hand.some((card) => card.id === current)
+        ? current
+        : (game.hand[0]?.id ?? null);
+    });
+    if (game.hand.length === 0) setHandExpanded(false);
     setHandSwipeX(0);
     setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
     handPointer.current = null;
     setConfirmDisband(null);
-  }, [game.actionSequence, game.hand, activeHandCardId, selectedCardId, selectable]);
+  }, [game.actionSequence, game.hand, selectable]);
 
   useEffect(() => {
     const cue = deriveTableFeedbackCue(previousSnapshot.current, snapshot);
