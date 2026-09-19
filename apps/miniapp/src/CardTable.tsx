@@ -138,11 +138,12 @@ function handCarouselStyle(
   offset: number,
   drag: HandDragVisual,
   cardId: string,
+  swipeX: number,
 ): HandCarouselStyle {
   const visible = Math.abs(offset) <= 2;
   const active = offset === 0;
   const dragging = drag.dragging && drag.cardId === cardId;
-  const x = dragging ? drag.x : offset * 76;
+  const x = dragging ? drag.x : offset * 76 + swipeX;
   const y = dragging ? drag.y : active ? -8 : Math.min(8, Math.abs(offset) * 4);
   return {
     '--hand-x': `${x}px`,
@@ -968,11 +969,7 @@ export function CardTable({
                       key={card.id}
                       data-hand-card-id={card.id}
                       aria-hidden={Math.abs(offset) > 2}
-                      style={handCarouselStyle(
-                        offset,
-                        dragging ? handDrag : { ...handDrag, x: handDrag.x + handSwipeX },
-                        card.id,
-                      )}
+                      style={handCarouselStyle(offset, handDrag, card.id, handSwipeX)}
                     >
                       <PlayingCard
                         card={card}
