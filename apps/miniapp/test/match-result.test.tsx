@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs';
 import type { MatchSnapshot, RematchStatus } from '@caravan/protocol';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { MatchResult } from '../src/MatchResult.js';
+
+const resultCss = readFileSync(new URL('../src/result.css', import.meta.url), 'utf8');
+const matchSurfaceCss = readFileSync(new URL('../src/match-surface.css', import.meta.url), 'utf8');
 
 function route(value: number, status: 'LIGHT' | 'IN_RANGE' | 'OVERLOADED') {
   return {
@@ -94,6 +98,20 @@ describe('MatchResult', () => {
     expect(html).toContain('22');
     expect(html).toContain('Play again');
     expect(html).toContain('Return to Play');
+  });
+
+  it('renders the final result as a modal overlay above the preserved table', () => {
+    const html = render(routeFinishedSnapshot(), { status: 'IDLE' });
+
+    expect(html).toContain('class="match-result-overlay"');
+    expect(html).toContain('class="match-result-backdrop"');
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain('aria-modal="true"');
+    expect(resultCss).toMatch(/\.match-result-overlay\s*\{[\s\S]*?position:\s*fixed/);
+    expect(resultCss).toMatch(/\.match-result-overlay\s*\{[\s\S]*?place-items:\s*center/);
+    expect(resultCss).toMatch(/\.match-result\s*\{[\s\S]*?max-height:/);
+    expect(resultCss).toMatch(/\.match-result\s*\{[\s\S]*?overflow-y:\s*auto/);
+    expect(matchSurfaceCss).not.toMatch(/\.match-result\s*\{/);
   });
 
   it('turns a waiting opponent request into an explicit accept-rematch action', () => {

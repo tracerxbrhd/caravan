@@ -1,11 +1,43 @@
-.match-result {
+.match-result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
   display: grid;
-  gap: 16px;
-  margin-top: 14px;
+  place-items: center;
+  padding-top: calc(12px + var(--app-content-safe-top));
+  padding-right: max(12px, var(--app-content-safe-right));
+  padding-bottom: calc(12px + var(--app-content-safe-bottom));
+  padding-left: max(12px, var(--app-content-safe-left));
   overflow: hidden;
-  border-color: rgba(199, 158, 96, 0.38);
+  isolation: isolate;
+}
+
+.match-result-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(10, 7, 5, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.match-result {
+  position: relative;
+  display: grid;
+  width: min(100%, 440px);
+  max-height: min(680px, calc(var(--app-viewport-stable-height, 100dvh) - 24px));
+  gap: 14px;
+  margin: 0;
+  padding: clamp(16px, 4vw, 22px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-color: rgba(199, 158, 96, 0.42);
   background:
-    linear-gradient(135deg, rgba(115, 82, 43, 0.12), transparent 44%), rgba(30, 23, 16, 0.92);
+    linear-gradient(135deg, rgba(115, 82, 43, 0.14), transparent 44%), rgba(30, 23, 16, 0.98);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.58),
+    inset 0 1px rgba(255, 244, 218, 0.05);
+  scrollbar-width: thin;
 }
 
 .match-result__heading {
@@ -17,7 +49,7 @@
 
 .match-result__heading h2 {
   margin: 3px 0 6px;
-  font-size: clamp(1.6rem, 7vw, 2.6rem);
+  font-size: clamp(1.7rem, 7vw, 2.5rem);
 }
 
 .match-result__heading p {
@@ -40,87 +72,143 @@
 .result-lanes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
 }
 
 .result-lane {
   display: grid;
-  gap: 4px;
   min-width: 0;
-  padding: 10px;
+  gap: 3px;
+  padding: 9px 8px;
   border: 1px solid rgba(179, 143, 91, 0.24);
-  border-radius: 12px;
-  background: rgba(9, 7, 5, 0.24);
+  border-radius: 11px;
+  background: rgba(9, 7, 5, 0.26);
 }
 
 .result-lane__name {
   color: #9f8f77;
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .result-lane strong {
   color: #efe2cb;
-  font-size: 1rem;
+  font-size: 0.94rem;
 }
 
 .result-lane__score {
   color: #c7b79e;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
+  line-height: 1.25;
 }
 
 .result-lane__score small {
   color: #887a67;
-  font-size: 0.62rem;
+  font-size: 0.56rem;
 }
 
 .rematch-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px;
+  display: grid;
+  gap: 10px;
+  padding: 11px;
   border: 1px solid rgba(179, 143, 91, 0.24);
-  border-radius: 14px;
+  border-radius: 13px;
   background: rgba(54, 40, 25, 0.5);
 }
 
 .rematch-card p {
   margin: 3px 0 0;
   color: #c9b99f;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
 }
 
 .rematch-card .button {
-  flex: 0 0 auto;
+  width: 100%;
 }
 
 .match-result__exit {
-  justify-self: start;
+  width: 100%;
 }
 
 @media (max-width: 600px) {
+  .match-result-overlay {
+    padding-top: calc(10px + var(--app-content-safe-top));
+    padding-right: max(10px, var(--app-content-safe-right));
+    padding-bottom: calc(10px + var(--app-content-safe-bottom));
+    padding-left: max(10px, var(--app-content-safe-left));
+  }
+
+  .match-result {
+    max-height: calc(var(--app-viewport-stable-height, 100dvh) - 20px);
+    gap: 12px;
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .match-result__heading {
+    gap: 12px;
+  }
+
+  .match-result__heading h2 {
+    font-size: clamp(1.65rem, 9vw, 2.2rem);
+  }
+
+  .match-result__stamp {
+    padding: 6px 8px;
+    font-size: 0.62rem;
+  }
+
   .result-lanes {
-    grid-template-columns: 1fr;
+    gap: 5px;
   }
 
   .result-lane {
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
+    padding: 7px 6px;
+  }
+
+  .result-lane__name {
+    font-size: 0.56rem;
   }
 
   .result-lane strong {
-    text-align: center;
+    font-size: 0.82rem;
+  }
+
+  .result-lane__score {
+    font-size: 0.62rem;
+  }
+
+  .result-lane__score small {
+    display: block;
+    font-size: 0.5rem;
+  }
+}
+
+@media (max-height: 620px) {
+  .match-result {
+    gap: 9px;
+    padding: 13px;
+  }
+
+  .match-result__heading h2 {
+    margin-bottom: 3px;
   }
 
   .rematch-card {
-    display: grid;
+    gap: 7px;
+    padding: 9px;
   }
 
-  .rematch-card .button,
-  .match-result__exit {
-    width: 100%;
+  .rematch-card .section-kicker {
+    margin-bottom: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-result-backdrop {
+    backdrop-filter: none;
   }
 }

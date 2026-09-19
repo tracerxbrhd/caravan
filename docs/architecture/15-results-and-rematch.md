@@ -20,7 +20,7 @@ The result view derives win/loss/no-contest wording relative to `PlayerView.view
 
 The client must not infer a different winner from rendered totals or locally replay the final action. If the result and player projection ever disagree, the protocol/server invariant is the defect to fix.
 
-The finished table remains visible with the result surface rather than being immediately replaced by an unrelated screen. This preserves the causal context of the final action.
+The finished table remains visible behind the result surface rather than being immediately replaced by an unrelated screen. The result itself is presented as a centered modal overlay with a blocking backdrop so the final table remains causal context without competing for touch input. On short viewports, overflow belongs to the result modal rather than the match page or underlying table.
 
 ## Rematch contract
 
@@ -110,6 +110,8 @@ The first-playable result surface shows:
 - all three final lane outcomes and both visible route values for `ROUTES` finishes;
 - a rematch request/accept/waiting state;
 - `Return to Play`.
+
+The result surface is a modal dialog centered inside the Telegram-safe viewport. A dim backdrop visually separates it from the preserved final table and blocks interaction with the table while the result is open. The modal has a bounded maximum height and owns any necessary vertical scrolling on short screens.
 
 `NO_CONTEST` is described neutrally and must not visually blame either participant.
 
