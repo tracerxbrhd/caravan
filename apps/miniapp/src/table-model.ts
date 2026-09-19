@@ -15,6 +15,15 @@ export interface CardInteraction {
   readonly canDiscard: boolean;
 }
 
+export type HandDropTarget =
+  | { readonly kind: 'ROUTE'; readonly route: RouteIndex }
+  | {
+      readonly kind: 'CARD';
+      readonly targetPlayer: 'A' | 'B';
+      readonly route: RouteIndex;
+      readonly targetCardId: string;
+    };
+
 export function selectableCardIds(actions: readonly WireGameAction[]): readonly string[] {
   return [...new Set(actions.flatMap((action) => ('cardId' in action ? [action.cardId] : [])))];
 }
@@ -98,6 +107,21 @@ export function disbandAction(
 ): WireGameAction | null {
   return (
     actions.find((action) => action.type === 'DISBAND_ROUTE' && action.route === route) ?? null
+  );
+}
+
+export function handDropAction(
+  actions: readonly WireGameAction[],
+  cardId: string,
+  target: HandDropTarget,
+): WireGameAction | null {
+  if (target.kind === 'ROUTE') return valuePlayAction(actions, cardId, target.route);
+  return modifierPlayAction(
+    actions,
+    cardId,
+    target.targetPlayer,
+    target.route,
+    target.targetCardId,
   );
 }
 
