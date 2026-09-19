@@ -156,15 +156,15 @@ describeDatabase('authenticated realtime runtime', () => {
       expect(firstA.snapshot.connected).toEqual({ A: true, B: false });
       expect(firstA.snapshot.turnDeadlineAtMs).toBeNull();
 
-      const earlyAction = firstA.snapshot.game.legalActions[0];
-      if (earlyAction === undefined) throw new Error('Expected a legal opening action.');
+      const earlyCard = firstA.snapshot.game.hand[0];
+      if (earlyCard === undefined) throw new Error('Expected a private player A hand.');
       const notReady = await roundTrip(socketA, {
         protocolVersion: 1,
         type: 'GAME_ACTION',
         matchId,
         commandId: '00000000-0000-4000-8000-000000000812',
         expectedStateVersion: firstA.snapshot.stateVersion,
-        action: earlyAction,
+        action: { type: 'DISCARD_HAND_CARD', cardId: earlyCard.id },
       });
       expect(notReady).toMatchObject({
         type: 'COMMAND_REJECTED',
