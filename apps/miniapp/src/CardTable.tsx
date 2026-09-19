@@ -12,11 +12,7 @@ import {
   playSelectionFeedback,
   unlockPresentationAudio,
 } from './feedback.js';
-import {
-  classifyHandGesture,
-  cyclicHandOffset,
-  stepHandIndex,
-} from './hand-model.js';
+import { classifyHandGesture, cyclicHandOffset, stepHandIndex } from './hand-model.js';
 import { platform } from './platform.js';
 import {
   cardTransitionName,
@@ -541,9 +537,7 @@ export function CardTable({
   const selectedHandCard = game.hand.find((card) => card.id === selectedCardId) ?? null;
 
   useEffect(() => {
-    setSelectedCardId((current) =>
-      current !== null && !selectable.has(current) ? null : current,
-    );
+    setSelectedCardId((current) => (current !== null && !selectable.has(current) ? null : current));
     setActiveHandCardId((current) => {
       if (game.hand.length === 0) return null;
       return current !== null && game.hand.some((card) => card.id === current)
