@@ -4,7 +4,7 @@
 
 Implemented as the first fully interactive competitive match surface in the Mini App. This layer consumes the authoritative `MatchSnapshot` and realtime helpers introduced by the Mini App Play flow; it does not introduce another gameplay state machine or transport.
 
-Confirmed card travel, public discard destinations, sound, haptics, and richer causal presentation are implemented as the separate downstream layer in [`16-tactile-game-feel.md`](16-tactile-game-feel.md).
+PR24 replaces the original vertically serialized compact layout with a fixed three-caravan composition. All three opposing route pairs remain visible side by side in portrait and the live table is bounded to the Telegram stable viewport rather than turning the match into a scrollable dashboard. Confirmed card travel, public discard destinations, sound, haptics, and richer causal presentation remain the separate downstream layer in [`16-tactile-game-feel.md`](16-tactile-game-feel.md).
 
 ## Authority model
 
@@ -39,7 +39,7 @@ A selected card may expose a direct discard control only when `DISCARD_HAND_CARD
 
 Route disband is exposed only when the projection contains the corresponding `DISBAND_ROUTE` action and requires an explicit second confirmation.
 
-Surrender remains a server lifecycle command rather than a game-engine action and also requires explicit confirmation.
+Surrender remains a server lifecycle command rather than a game-engine action and also requires explicit confirmation. A match that has been created but has not reached initial readiness must still be escapable: the player may explicitly leave/surrender the waiting table even when the opponent has not connected yet. Gameplay actions remain blocked until both seats have connected and the first authoritative turn deadline exists.
 
 ## Pending commands and rejection recovery
 
@@ -70,11 +70,19 @@ No opponent hidden hand identity or future deck information is introduced by the
 
 Cards use original lightweight DOM/CSS presentation rather than borrowed game assets or a canvas renderer. Rank and suit remain readable as text/glyph information at phone scale.
 
-## Responsive and motion behavior
+## Fixed responsive table
 
-Desktop/tablet layouts can show the three lane pairs side by side. Compact portrait layouts stack lane pairs vertically rather than shrinking cards below useful touch/readability size.
+The live match shell uses Telegram's stable viewport height and content-safe insets as a hard presentation boundary. The match page itself must not scroll during normal play. The table occupies the flexible center of that viewport; header, opponent rail, contextual status and hand consume bounded surrounding space.
 
-Hand and long route contents may scroll horizontally within their local region.
+The table is composed as three parallel caravans on desktop, tablet, and portrait phone layouts. A compact screen must not serialize the three lane pairs into a long vertical dashboard because comparison between caravan 1/2/3 is primary gameplay information.
+
+Each caravan is a bounded column with the rival route above, a compact ownership crossing in the middle, and the viewer route below. Rival/viewer route values and statuses face the middle crossing so the paired competition can be read immediately.
+
+Public route cards overlap along the route axis. Dense routes increase overlap rather than introducing a route scrollbar or making the entire match surface movable. Rank/suit corners remain the minimum always-visible information. If later playtests show that unusually dense routes need more inspection space, the preferred follow-up is a temporary route-focus expansion over the fixed table, not permanent page or board scrolling.
+
+Secondary presentation controls such as sound, haptics, motion and surrender are not allocated permanent vertical dashboard rows. They live behind a compact expandable table menu. Critical transient state remains directly visible; in particular, a waiting match whose opponent has not connected exposes a direct confirmed `Leave table` action so durable recovery cannot trap a player in an old match.
+
+The hand remains the existing compact tap-select fan until the separately scoped PR25 cyclic/expanded hand interaction is implemented. PR24 deliberately does not make dragging mandatory and does not add client-authoritative placement state.
 
 Selection and legal-target feedback use transform, opacity, border, and shadow animation. Reduced-motion users inherit the Mini App's existing `prefers-reduced-motion` fallback, which collapses decorative animation without removing state information.
 
@@ -90,7 +98,7 @@ Its helpers intentionally return the exact matching wire action from the current
 
 This interaction layer itself does not own:
 
-- server lifecycle/result logic;
+- server lifecycle/result logic beyond presenting authoritative lifecycle state;
 - rematch negotiation;
 - production deployment composition;
 - browser/native authentication.

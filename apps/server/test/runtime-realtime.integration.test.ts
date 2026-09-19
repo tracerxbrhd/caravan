@@ -156,12 +156,15 @@ describeDatabase('authenticated realtime runtime', () => {
       expect(firstA.snapshot.connected).toEqual({ A: true, B: false });
       expect(firstA.snapshot.turnDeadlineAtMs).toBeNull();
 
+      const earlyAction = firstA.snapshot.game.legalActions[0];
+      if (earlyAction === undefined) throw new Error('Expected a legal opening action.');
       const notReady = await roundTrip(socketA, {
         protocolVersion: 1,
-        type: 'SURRENDER',
+        type: 'GAME_ACTION',
         matchId,
         commandId: '00000000-0000-4000-8000-000000000812',
         expectedStateVersion: firstA.snapshot.stateVersion,
+        action: earlyAction,
       });
       expect(notReady).toMatchObject({
         type: 'COMMAND_REJECTED',
@@ -258,6 +261,51 @@ describeDatabase('authenticated realtime runtime', () => {
       socketB.terminate();
       socketA2?.terminate();
       socketA3?.terminate();
+    }
+  });
+
+  it('allows surrender before the opponent connects so a recovered waiting match can be left', async () => {
+    const a = await authenticate(15_001, 'Waiting A');
+    const b = await authenticate(15_002, 'Waiting B');
+    const { matchId } = await service.createMatch({
+      participants: { A: a.profile.id, B: b.profile.id },
+    });
+    const socketA = await openSocket(a.cookie);
+
+    try {
+      const firstA = await roundTrip(socketA, {
+        protocolVersion: 1,
+        type: 'RESYNC',
+        matchId,
+        commandId: '00000000-0000-4000-8000-000000000817',
+        knownStateVersion: null,
+      });
+      expect(firstA.type).toBe('SNAPSHOT');
+      if (firstA.type !== 'SNAPSHOT') throw new Error('Expected waiting match snapshot.');
+      expect(firstA.snapshot.connected).toEqual({ A: true, B: false });
+      expect(firstA.snapshot.turnDeadlineAtMs).toBeNull();
+
+      const finished = await roundTrip(socketA, {
+        protocolVersion: 1,
+        type: 'SURRENDER',
+        matchId,
+        commandId: '00000000-0000-4000-8000-000000000818',
+        expectedStateVersion: firstA.snapshot.stateVersion,
+      });
+      expect(finished.type).toBe('SNAPSHOT');
+      if (finished.type !== 'SNAPSHOT') throw new Error('Expected surrender snapshot.');
+      expect(finished.snapshot.status).toBe('FINISHED');
+      expect(finished.snapshot.result).toEqual({ reason: 'SURRENDER', winner: 'B', loser: 'A' });
+
+      const matchmaking = await app.inject({
+        method: 'GET',
+        url: '/api/matchmaking',
+        headers: { cookie: a.cookie },
+      });
+      expect(matchmaking.statusCode).toBe(200);
+      expect(matchmaking.json()).toEqual({ status: 'IDLE' });
+    } finally {
+      socketA.terminate();
     }
   });
 

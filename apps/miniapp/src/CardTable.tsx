@@ -269,6 +269,12 @@ function RouteStrip({
   const valueTarget =
     ownRoute && interaction !== null && interaction.valueRoutes.includes(routeIndex);
   const canDisband = ownRoute && disbandAction(legalActions, routeIndex) !== null;
+  const densityClass =
+    route.cards.length >= 7
+      ? 'route-strip--very-dense'
+      : route.cards.length >= 5
+        ? 'route-strip--dense'
+        : '';
 
   const playValue = () => {
     if (selectedCardId === null) return;
@@ -282,7 +288,9 @@ function RouteStrip({
   };
 
   return (
-    <section className={`route-strip ${ownRoute ? 'route-strip--own' : 'route-strip--rival'}`}>
+    <section
+      className={`route-strip ${ownRoute ? 'route-strip--own' : 'route-strip--rival'} ${densityClass}`}
+    >
       <header className="route-strip__header">
         <span>{label}</span>
         <div className="route-metrics">
@@ -432,8 +440,10 @@ export function CardTable({
     if (cue !== null) playConfirmedFeedback(cue, preferencesRef.current);
   }, [snapshot]);
 
-  const disabled = !connectionReady || pending || snapshot.status !== 'ACTIVE';
-  const yourTurn = snapshot.status === 'ACTIVE' && game.activePlayer === viewer;
+  const waitingForOpponent = snapshot.status === 'ACTIVE' && snapshot.turnDeadlineAtMs === null;
+  const matchReady = snapshot.status === 'ACTIVE' && snapshot.turnDeadlineAtMs !== null;
+  const disabled = !connectionReady || pending || !matchReady;
+  const yourTurn = matchReady && game.activePlayer === viewer;
   const hapticsAvailable = platform.hapticsAvailable();
 
   const updatePreferences = (next: PresentationPreferences): void => {
@@ -463,13 +473,19 @@ export function CardTable({
     if (onSurrender()) setConfirmSurrender(false);
   };
 
+  const opponentStatus = !snapshot.connected[opponent]
+    ? 'Not connected'
+    : game.activePlayer === opponent
+      ? 'Thinking'
+      : 'Waiting';
+
   return (
     <div className="card-table" data-motion={preferences.motion.toLowerCase()}>
       <section className="table-opponent" aria-label="Opponent area">
         <div className="player-ribbon">
           <div>
             <span className="section-kicker">Opponent</span>
-            <strong>{game.activePlayer === opponent ? 'Thinking' : 'Waiting'}</strong>
+            <strong>{opponentStatus}</strong>
           </div>
           <div className="player-counts">
             <span>Deck {game.players[opponent].remainingDeckCount}</span>
@@ -539,7 +555,13 @@ export function CardTable({
       <section className="table-guidance" aria-live="polite">
         <div>
           <span className="section-kicker">
-            {game.phase === 'OPENING' ? 'Opening' : 'Your move'}
+            {snapshot.status === 'FINISHED'
+              ? 'Result'
+              : waitingForOpponent
+                ? 'Waiting'
+                : game.phase === 'OPENING'
+                  ? 'Opening'
+                  : 'Your move'}
           </span>
           <strong>
             {!connectionReady
@@ -548,12 +570,49 @@ export function CardTable({
                 ? 'Waiting for the server…'
                 : snapshot.status === 'FINISHED'
                   ? resultLabel(snapshot)
-                  : yourTurn
-                    ? selectionHint(interaction)
-                    : 'Opponent is acting.'}
+                  : waitingForOpponent
+                    ? 'Opponent has not connected yet.'
+                    : yourTurn
+                      ? selectionHint(interaction)
+                      : 'Opponent is acting.'}
           </strong>
         </div>
-        {rejection !== null && <p className="table-rejection">{rejection}</p>}
+
+        {waitingForOpponent ? (
+          <div className="waiting-match-actions">
+            {confirmSurrender ? (
+              <>
+                <span>Leave this waiting match?</span>
+                <button
+                  type="button"
+                  className="button button--danger"
+                  disabled={!connectionReady || pending}
+                  onClick={surrender}
+                >
+                  Confirm
+                </button>
+                <button
+                  type="button"
+                  className="button button--quiet"
+                  onClick={() => setConfirmSurrender(false)}
+                >
+                  Stay
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="button button--quiet"
+                disabled={!connectionReady || pending}
+                onClick={() => setConfirmSurrender(true)}
+              >
+                Leave table
+              </button>
+            )}
+          </div>
+        ) : (
+          rejection !== null && <p className="table-rejection">{rejection}</p>
+        )}
       </section>
 
       <section className="hand-zone" aria-label="Your hand">
@@ -600,78 +659,81 @@ export function CardTable({
         </div>
       </section>
 
-      <footer className="match-controls">
-        <div className="table-feel-controls" aria-label="Table feel settings">
-          <button
-            type="button"
-            className="table-feel-toggle"
-            aria-pressed={preferences.sound}
-            onClick={() => {
-              const sound = !preferences.sound;
-              if (sound) unlockPresentationAudio();
-              updatePreferences({ ...preferences, sound });
-            }}
-          >
-            Sound {preferences.sound ? 'on' : 'off'}
-          </button>
-          <button
-            type="button"
-            className="table-feel-toggle"
-            aria-pressed={preferences.haptics}
-            disabled={!hapticsAvailable}
-            onClick={() => updatePreferences({ ...preferences, haptics: !preferences.haptics })}
-          >
-            Haptics {hapticsAvailable ? (preferences.haptics ? 'on' : 'off') : 'unavailable'}
-          </button>
-          <button
-            type="button"
-            className="table-feel-toggle"
-            aria-pressed={preferences.motion === 'REDUCED'}
-            onClick={() =>
-              updatePreferences({
-                ...preferences,
-                motion: preferences.motion === 'REDUCED' ? 'SYSTEM' : 'REDUCED',
-              })
-            }
-          >
-            Motion {preferences.motion === 'REDUCED' ? 'reduced' : 'system'}
-          </button>
-        </div>
+      <details className="table-menu">
+        <summary aria-label="Open table controls">⋯</summary>
+        <div className="table-menu__panel">
+          <div className="table-feel-controls" aria-label="Table feel settings">
+            <button
+              type="button"
+              className="table-feel-toggle"
+              aria-pressed={preferences.sound}
+              onClick={() => {
+                const sound = !preferences.sound;
+                if (sound) unlockPresentationAudio();
+                updatePreferences({ ...preferences, sound });
+              }}
+            >
+              Sound {preferences.sound ? 'on' : 'off'}
+            </button>
+            <button
+              type="button"
+              className="table-feel-toggle"
+              aria-pressed={preferences.haptics}
+              disabled={!hapticsAvailable}
+              onClick={() => updatePreferences({ ...preferences, haptics: !preferences.haptics })}
+            >
+              Haptics {hapticsAvailable ? (preferences.haptics ? 'on' : 'off') : 'unavailable'}
+            </button>
+            <button
+              type="button"
+              className="table-feel-toggle"
+              aria-pressed={preferences.motion === 'REDUCED'}
+              onClick={() =>
+                updatePreferences({
+                  ...preferences,
+                  motion: preferences.motion === 'REDUCED' ? 'SYSTEM' : 'REDUCED',
+                })
+              }
+            >
+              Motion {preferences.motion === 'REDUCED' ? 'reduced' : 'system'}
+            </button>
+          </div>
 
-        {snapshot.status === 'ACTIVE' && (
-          <div className="surrender-control">
-            {confirmSurrender ? (
-              <>
-                <span>End the match and concede?</span>
-                <button
-                  type="button"
-                  className="button button--danger"
-                  disabled={disabled}
-                  onClick={surrender}
-                >
-                  Confirm surrender
-                </button>
+          {snapshot.status === 'ACTIVE' && !waitingForOpponent && (
+            <div className="surrender-control">
+              {confirmSurrender ? (
+                <>
+                  <span>End the match and concede?</span>
+                  <button
+                    type="button"
+                    className="button button--danger"
+                    disabled={!connectionReady || pending}
+                    onClick={surrender}
+                  >
+                    Confirm surrender
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--quiet"
+                    onClick={() => setConfirmSurrender(false)}
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
                 <button
                   type="button"
                   className="button button--quiet"
-                  onClick={() => setConfirmSurrender(false)}
+                  disabled={!connectionReady || pending}
+                  onClick={() => setConfirmSurrender(true)}
                 >
-                  Cancel
+                  Surrender
                 </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="button button--quiet"
-                disabled={pending}
-                onClick={() => setConfirmSurrender(true)}
-              >
-                Surrender
-              </button>
-            )}
-          </div>
-        )}
-      </footer>
+              )}
+            </div>
+          )}
+        </div>
+      </details>
     </div>
   );
 }
