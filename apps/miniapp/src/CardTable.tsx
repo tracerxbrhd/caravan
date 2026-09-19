@@ -1,10 +1,18 @@
 import type { MatchSnapshot, WireGameAction, WirePlayerView } from '@caravan/protocol';
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import {
   playConfirmedFeedback,
   playSelectionFeedback,
   unlockPresentationAudio,
 } from './feedback.js';
+import { classifyHandGesture, cyclicHandOffset, stepHandIndex } from './hand-model.js';
 import { platform } from './platform.js';
 import {
   cardTransitionName,
@@ -17,11 +25,13 @@ import {
   cardInteraction,
   discardAction,
   disbandAction,
+  handDropAction,
   isModifierTarget,
   modifierPlayAction,
   selectableCardIds,
   valuePlayAction,
   type CardInteraction,
+  type HandDropTarget,
   type RouteIndex,
 } from './table-model.js';
 
@@ -30,10 +40,34 @@ type PublicCard = WirePlayerView['hand'][number];
 type RouteView = WirePlayerView['players']['A']['routes'][number];
 type RouteCardView = RouteView['cards'][number];
 type CardPresentationStyle = CSSProperties & {
-  '--fan-angle'?: string;
-  '--fan-lift'?: string;
   viewTransitionName?: string;
 };
+
+type HandCarouselStyle = CSSProperties & {
+  '--hand-x'?: string;
+  '--hand-y'?: string;
+  '--hand-rotate'?: string;
+  '--hand-scale'?: string;
+  '--hand-opacity'?: string;
+};
+
+type HandPointerMode = 'PENDING' | 'SWIPE' | 'DRAG';
+
+interface HandPointerSession {
+  readonly pointerId: number;
+  readonly startX: number;
+  readonly startY: number;
+  readonly cardId: string | null;
+  readonly startedOnActive: boolean;
+  mode: HandPointerMode;
+}
+
+interface HandDragVisual {
+  readonly cardId: string | null;
+  readonly x: number;
+  readonly y: number;
+  readonly dragging: boolean;
+}
 
 interface CardTableProps {
   readonly snapshot: MatchSnapshot;
@@ -96,14 +130,57 @@ function transitionStyle(cardId: string): CardPresentationStyle {
   return { viewTransitionName: cardTransitionName(cardId) };
 }
 
-function handCardStyle(index: number, count: number): CardPresentationStyle {
+function handCarouselStyle(
+  offset: number,
+  drag: HandDragVisual,
+  cardId: string,
+  swipeX: number,
+): HandCarouselStyle {
+  const visible = Math.abs(offset) <= 2;
+  const active = offset === 0;
+  const dragging = drag.dragging && drag.cardId === cardId;
+  const x = dragging ? drag.x : offset * 76 + swipeX;
+  const y = dragging ? drag.y : active ? -8 : Math.min(8, Math.abs(offset) * 4);
+  return {
+    '--hand-x': `${x}px`,
+    '--hand-y': `${y}px`,
+    '--hand-rotate': `${dragging ? 0 : offset * 4}deg`,
+    '--hand-scale': dragging ? '1.08' : active ? '1' : '0.86',
+    '--hand-opacity': visible ? (active ? '1' : '0.76') : '0',
+  };
+}
+
+function routeIndexFromData(value: string | undefined): RouteIndex | null {
+  if (value === '0') return 0;
+  if (value === '1') return 1;
+  if (value === '2') return 2;
+  return null;
+}
+
+function dropTargetFromPoint(clientX: number, clientY: number): HandDropTarget | null {
+  if (typeof document === 'undefined') return null;
+  const element = document.elementFromPoint(clientX, clientY);
+  if (!(element instanceof HTMLElement)) return null;
+  const target = element.closest<HTMLElement>('[data-hand-drop-kind]');
+  if (target === null) return null;
+
+  const route = routeIndexFromData(target.dataset.routeIndex);
+  if (route === null) return null;
+  if (target.dataset.handDropKind === 'route') return { kind: 'ROUTE', route };
+  if (target.dataset.handDropKind !== 'card') return null;
+
+  const targetPlayer = target.dataset.targetPlayer;
+  const targetCardId = target.dataset.targetCardId;
+  if ((targetPlayer !== 'A' && targetPlayer !== 'B') || targetCardId === undefined) return null;
+  return { kind: 'CARD', targetPlayer, route, targetCardId };
+}
+
+function handDockCardStyle(index: number, count: number): CSSProperties {
   const midpoint = (count - 1) / 2;
   const offset = index - midpoint;
-  const angle = Math.max(-7, Math.min(7, offset * 2.2));
-  const lift = Math.min(7, Math.abs(offset) * 1.2);
   return {
-    '--fan-angle': `${angle}deg`,
-    '--fan-lift': `${lift}px`,
+    zIndex: index + 1,
+    transform: `translateX(${offset * 10}px) translateY(${Math.abs(offset) * 1.2}px) rotate(${offset * 2.4}deg)`,
   };
 }
 
@@ -204,17 +281,27 @@ function DiscardPile({
 
 function RouteCardNode({
   node,
+  seat,
+  routeIndex,
   target,
   disabled,
   onTarget,
 }: {
   readonly node: RouteCardView;
+  readonly seat: Seat;
+  readonly routeIndex: RouteIndex;
   readonly target: boolean;
   readonly disabled: boolean;
   onTarget(): void;
 }) {
   return (
-    <div className="route-node">
+    <div
+      className="route-node"
+      data-hand-drop-kind={target ? 'card' : undefined}
+      data-target-player={target ? seat : undefined}
+      data-route-index={target ? routeIndex : undefined}
+      data-target-card-id={target ? node.card.id : undefined}
+    >
       {target ? (
         <PlayingCard card={node.card} target disabled={disabled} onClick={onTarget} />
       ) : (
@@ -321,6 +408,8 @@ function RouteStrip({
             <RouteCardNode
               key={node.card.id}
               node={node}
+              seat={seat}
+              routeIndex={routeIndex}
               target={target}
               disabled={disabled}
               onTarget={() => {
@@ -343,6 +432,8 @@ function RouteStrip({
         <button
           type="button"
           className="route-place-target"
+          data-hand-drop-kind="route"
+          data-route-index={routeIndex}
           disabled={disabled}
           onClick={playValue}
         >
@@ -415,6 +506,15 @@ export function CardTable({
   const legalActions = game.legalActions;
   const selectable = useMemo(() => new Set(selectableCardIds(legalActions)), [legalActions]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [activeHandCardId, setActiveHandCardId] = useState<string | null>(game.hand[0]?.id ?? null);
+  const [handExpanded, setHandExpanded] = useState(false);
+  const [handSwipeX, setHandSwipeX] = useState(0);
+  const [handDrag, setHandDrag] = useState<HandDragVisual>({
+    cardId: null,
+    x: 0,
+    y: 0,
+    dragging: false,
+  });
   const [confirmDisband, setConfirmDisband] = useState<RouteIndex | null>(null);
   const [confirmSurrender, setConfirmSurrender] = useState(false);
   const [preferences, setPreferences] = useState<PresentationPreferences>(
@@ -422,17 +522,34 @@ export function CardTable({
   );
   const preferencesRef = useRef(preferences);
   const previousSnapshot = useRef<MatchSnapshot | null>(null);
+  const handPointer = useRef<HandPointerSession | null>(null);
   preferencesRef.current = preferences;
 
   const interaction = useMemo(
     () => (selectedCardId === null ? null : cardInteraction(legalActions, selectedCardId)),
     [legalActions, selectedCardId],
   );
+  const activeHandIndex = Math.max(
+    0,
+    game.hand.findIndex((card) => card.id === activeHandCardId),
+  );
+  const activeHandCard = game.hand[activeHandIndex] ?? null;
+  const selectedHandCard = game.hand.find((card) => card.id === selectedCardId) ?? null;
 
   useEffect(() => {
-    if (selectedCardId !== null && !selectable.has(selectedCardId)) setSelectedCardId(null);
+    setSelectedCardId((current) => (current !== null && !selectable.has(current) ? null : current));
+    setActiveHandCardId((current) => {
+      if (game.hand.length === 0) return null;
+      return current !== null && game.hand.some((card) => card.id === current)
+        ? current
+        : (game.hand[0]?.id ?? null);
+    });
+    if (game.hand.length === 0) setHandExpanded(false);
+    setHandSwipeX(0);
+    setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
+    handPointer.current = null;
     setConfirmDisband(null);
-  }, [game.actionSequence, selectedCardId, selectable]);
+  }, [game.actionSequence, game.hand, selectable]);
 
   useEffect(() => {
     const cue = deriveTableFeedbackCue(previousSnapshot.current, snapshot);
@@ -445,6 +562,8 @@ export function CardTable({
   const disabled = !connectionReady || pending || !matchReady;
   const yourTurn = matchReady && game.activePlayer === viewer;
   const hapticsAvailable = platform.hapticsAvailable();
+  const activeHandPlayable =
+    activeHandCard !== null && selectable.has(activeHandCard.id) && yourTurn && !disabled;
 
   const updatePreferences = (next: PresentationPreferences): void => {
     preferencesRef.current = next;
@@ -473,6 +592,175 @@ export function CardTable({
     if (onSurrender()) setConfirmSurrender(false);
   };
 
+  const moveActiveHand = (step: -1 | 1): void => {
+    if (game.hand.length === 0) return;
+    const nextIndex = stepHandIndex(activeHandIndex, step, game.hand.length);
+    const nextCard = game.hand[nextIndex];
+    if (nextCard === undefined) return;
+    setActiveHandCardId(nextCard.id);
+    setSelectedCardId(null);
+    setConfirmDisband(null);
+  };
+
+  const selectActiveHandCard = (): void => {
+    if (!activeHandPlayable || activeHandCard === null) return;
+    const alreadySelected = selectedCardId === activeHandCard.id;
+    if (!alreadySelected) playSelectionFeedback(preferencesRef.current);
+    setSelectedCardId(alreadySelected ? null : activeHandCard.id);
+    setConfirmDisband(null);
+    if (!alreadySelected) setHandExpanded(false);
+  };
+
+  const openHand = (): void => {
+    if (game.hand.length === 0 || snapshot.status === 'FINISHED') return;
+    if (selectedCardId !== null && game.hand.some((card) => card.id === selectedCardId)) {
+      setActiveHandCardId(selectedCardId);
+    }
+    setHandExpanded(true);
+    setHandSwipeX(0);
+  };
+
+  const closeHand = (): void => {
+    handPointer.current = null;
+    setHandSwipeX(0);
+    setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
+    setHandExpanded(false);
+  };
+
+  const handleHandPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (!handExpanded || game.hand.length === 0) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    const target =
+      event.target instanceof Element
+        ? event.target.closest<HTMLElement>('[data-hand-card-id]')
+        : null;
+    const cardId = target?.dataset.handCardId ?? activeHandCard?.id ?? null;
+    handPointer.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      cardId,
+      startedOnActive: cardId !== null && cardId === activeHandCard?.id,
+      mode: 'PENDING',
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setHandSwipeX(0);
+    setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
+  };
+
+  const handleHandPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const session = handPointer.current;
+    if (session === null || session.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - session.startX;
+    const deltaY = event.clientY - session.startY;
+    const canDrag =
+      session.startedOnActive &&
+      session.cardId !== null &&
+      selectable.has(session.cardId) &&
+      yourTurn &&
+      !disabled;
+    const gesture = classifyHandGesture(deltaX, deltaY, canDrag);
+
+    if (session.mode === 'PENDING' && gesture.kind === 'DRAG') {
+      session.mode = 'DRAG';
+      if (session.cardId !== null && selectedCardId !== session.cardId) {
+        playSelectionFeedback(preferencesRef.current);
+        setSelectedCardId(session.cardId);
+        setConfirmDisband(null);
+      }
+    } else if (session.mode === 'PENDING' && gesture.kind === 'SWIPE') {
+      session.mode = 'SWIPE';
+      setSelectedCardId(null);
+    }
+
+    if (session.mode === 'DRAG') {
+      setHandSwipeX(0);
+      setHandDrag({
+        cardId: session.cardId,
+        x: deltaX,
+        y: deltaY,
+        dragging: true,
+      });
+      event.preventDefault();
+      return;
+    }
+
+    if (
+      session.mode === 'SWIPE' ||
+      (session.mode === 'PENDING' && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY))
+    ) {
+      setHandSwipeX(Math.max(-64, Math.min(64, deltaX)));
+      event.preventDefault();
+    }
+  };
+
+  const handleHandPointerUp = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const session = handPointer.current;
+    if (session === null || session.pointerId !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const deltaX = event.clientX - session.startX;
+    const deltaY = event.clientY - session.startY;
+    const canDrag =
+      session.startedOnActive &&
+      session.cardId !== null &&
+      selectable.has(session.cardId) &&
+      yourTurn &&
+      !disabled;
+    const gesture =
+      session.mode === 'DRAG'
+        ? ({ kind: 'DRAG' } as const)
+        : classifyHandGesture(deltaX, deltaY, canDrag);
+
+    if (gesture.kind === 'DRAG' && session.cardId !== null) {
+      const draggedElement = Array.from(
+        event.currentTarget.querySelectorAll<HTMLElement>('[data-hand-card-id]'),
+      ).find((element) => element.dataset.handCardId === session.cardId);
+      const previousPointerEvents = draggedElement?.style.pointerEvents ?? '';
+      if (draggedElement !== undefined) draggedElement.style.pointerEvents = 'none';
+      const dropTarget = dropTargetFromPoint(event.clientX, event.clientY);
+      if (draggedElement !== undefined) draggedElement.style.pointerEvents = previousPointerEvents;
+
+      const action =
+        dropTarget === null ? null : handDropAction(legalActions, session.cardId, dropTarget);
+      if (action !== null && submit(action)) {
+        setHandExpanded(false);
+      } else {
+        setSelectedCardId(session.cardId);
+        setHandExpanded(false);
+      }
+    } else if (gesture.kind === 'SWIPE') {
+      moveActiveHand(gesture.step);
+    } else if (gesture.kind === 'TAP' && session.cardId !== null) {
+      if (session.cardId !== activeHandCard?.id) {
+        setActiveHandCardId(session.cardId);
+        setSelectedCardId(null);
+        setConfirmDisband(null);
+      } else {
+        selectActiveHandCard();
+      }
+    }
+
+    handPointer.current = null;
+    setHandSwipeX(0);
+    setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
+  };
+
+  const handleHandPointerCancel = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (handPointer.current?.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    handPointer.current = null;
+    setHandSwipeX(0);
+    setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
+  };
+
   const opponentStatus = !snapshot.connected[opponent]
     ? 'Not connected'
     : game.activePlayer === opponent
@@ -480,7 +768,11 @@ export function CardTable({
       : 'Waiting';
 
   return (
-    <div className="card-table" data-motion={preferences.motion.toLowerCase()}>
+    <div
+      className="card-table"
+      data-motion={preferences.motion.toLowerCase()}
+      data-hand-expanded={handExpanded ? 'true' : 'false'}
+    >
       <section className="table-opponent" aria-label="Opponent area">
         <div className="player-ribbon">
           <div>
@@ -615,48 +907,177 @@ export function CardTable({
         )}
       </section>
 
-      <section className="hand-zone" aria-label="Your hand">
-        <div className="hand-fan">
-          {game.hand.map((card, index) => {
-            const canSelect = selectable.has(card.id);
-            const selected = selectedCardId === card.id;
-            return (
-              <PlayingCard
-                key={card.id}
-                card={card}
-                selected={selected}
-                selectable={canSelect && yourTurn}
-                disabled={disabled || !yourTurn || !canSelect}
-                style={handCardStyle(index, game.hand.length)}
-                onClick={() => {
-                  setConfirmDisband(null);
-                  if (!selected) playSelectionFeedback(preferencesRef.current);
-                  setSelectedCardId(selected ? null : card.id);
-                }}
-              />
-            );
-          })}
-        </div>
+      <section
+        className={`hand-zone ${handExpanded ? 'hand-zone--expanded' : ''}`}
+        aria-label="Your hand"
+      >
+        {handExpanded ? (
+          <div className="hand-drawer">
+            <header className="hand-drawer__header">
+              <div>
+                <span className="section-kicker">Your hand</span>
+                <strong>
+                  {activeHandCard === null
+                    ? 'No cards'
+                    : `${activeHandIndex + 1} of ${game.hand.length} · ${rankLabel(activeHandCard)}${suitGlyph(activeHandCard)}`}
+                </strong>
+              </div>
+              <button type="button" className="button button--quiet" onClick={closeHand}>
+                Close
+              </button>
+            </header>
 
-        <div className="hand-controls">
-          <div className="hand-status">
-            <DiscardPile cards={game.players[viewer].discardPile} label="Your" />
-            <div className="player-counts">
-              <span>Deck {game.players[viewer].remainingDeckCount}</span>
-              <span>Discard {game.players[viewer].discardPile.length}</span>
+            <div className="hand-carousel">
+              <button
+                type="button"
+                className="hand-carousel__step hand-carousel__step--previous"
+                aria-label="Previous card"
+                disabled={game.hand.length <= 1}
+                onClick={() => moveActiveHand(-1)}
+              >
+                ‹
+              </button>
+
+              <div
+                className="hand-carousel__stage"
+                aria-label="Swipe left or right to browse your hand"
+                onPointerDown={handleHandPointerDown}
+                onPointerMove={handleHandPointerMove}
+                onPointerUp={handleHandPointerUp}
+                onPointerCancel={handleHandPointerCancel}
+              >
+                {game.hand.map((card, index) => {
+                  const offset = cyclicHandOffset(index, activeHandIndex, game.hand.length);
+                  const active = offset === 0;
+                  const canSelect = selectable.has(card.id);
+                  const dragging = handDrag.dragging && handDrag.cardId === card.id;
+                  return (
+                    <div
+                      className={[
+                        'hand-carousel-card',
+                        active ? 'hand-carousel-card--active' : '',
+                        dragging ? 'hand-carousel-card--dragging' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      key={card.id}
+                      data-hand-card-id={card.id}
+                      aria-hidden={Math.abs(offset) > 2}
+                      style={handCarouselStyle(offset, handDrag, card.id, handSwipeX)}
+                    >
+                      <PlayingCard
+                        card={card}
+                        selected={selectedCardId === card.id}
+                        selectable={canSelect && yourTurn}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                className="hand-carousel__step hand-carousel__step--next"
+                aria-label="Next card"
+                disabled={game.hand.length <= 1}
+                onClick={() => moveActiveHand(1)}
+              >
+                ›
+              </button>
             </div>
+
+            <footer className="hand-drawer__footer">
+              <div className="hand-status">
+                <DiscardPile cards={game.players[viewer].discardPile} label="Your" />
+                <div className="player-counts">
+                  <span>Deck {game.players[viewer].remainingDeckCount}</span>
+                  <span>Discard {game.players[viewer].discardPile.length}</span>
+                </div>
+              </div>
+              <div className="hand-drawer__actions">
+                <button
+                  type="button"
+                  className="button button--primary"
+                  disabled={!activeHandPlayable}
+                  onClick={selectActiveHandCard}
+                >
+                  {activeHandCard !== null && selectedCardId === activeHandCard.id
+                    ? 'Deselect card'
+                    : 'Select card'}
+                </button>
+                {interaction?.canDiscard === true && (
+                  <button
+                    type="button"
+                    className="button button--quiet"
+                    disabled={disabled}
+                    onClick={discardSelected}
+                  >
+                    Discard selected
+                  </button>
+                )}
+              </div>
+            </footer>
+            <p className="hand-drawer__hint">
+              Swipe to browse. Tap a playable card to select it, or drag it to a highlighted target.
+            </p>
           </div>
-          {interaction?.canDiscard === true && (
+        ) : (
+          <div className="hand-dock">
+            <div className="hand-status">
+              <DiscardPile cards={game.players[viewer].discardPile} label="Your" />
+              <div className="player-counts">
+                <span>Deck {game.players[viewer].remainingDeckCount}</span>
+                <span>Discard {game.players[viewer].discardPile.length}</span>
+              </div>
+            </div>
+
             <button
               type="button"
-              className="button button--quiet"
-              disabled={disabled}
-              onClick={discardSelected}
+              className="hand-dock__open"
+              disabled={game.hand.length === 0 || snapshot.status === 'FINISHED'}
+              onClick={openHand}
+              aria-label={`Open your hand, ${game.hand.length} cards`}
             >
-              Discard selected
+              <span className="hand-dock__mini-cards" aria-hidden="true">
+                {game.hand.map((card, index) => (
+                  <span
+                    className={[
+                      'hand-mini-card',
+                      selectedCardId === card.id ? 'hand-mini-card--selected' : '',
+                      selectable.has(card.id) && yourTurn ? 'hand-mini-card--playable' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    key={card.id}
+                    style={handDockCardStyle(index, game.hand.length)}
+                  >
+                    <strong>{rankLabel(card)}</strong>
+                    <span>{suitGlyph(card)}</span>
+                  </span>
+                ))}
+              </span>
+              <span className="hand-dock__copy">
+                <span className="section-kicker">Your hand</span>
+                <strong>
+                  {selectedHandCard === null
+                    ? `${game.hand.length} cards · tap to open`
+                    : `${rankLabel(selectedHandCard)}${suitGlyph(selectedHandCard)} selected · tap to change`}
+                </strong>
+              </span>
             </button>
-          )}
-        </div>
+
+            {interaction?.canDiscard === true && (
+              <button
+                type="button"
+                className="button button--quiet hand-dock__discard"
+                disabled={disabled}
+                onClick={discardSelected}
+              >
+                Discard
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       <details className="table-menu">

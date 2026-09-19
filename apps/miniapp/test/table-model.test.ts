@@ -4,6 +4,7 @@ import {
   cardInteraction,
   discardAction,
   disbandAction,
+  handDropAction,
   isModifierTarget,
   modifierPlayAction,
   selectableCardIds,
@@ -70,6 +71,25 @@ describe('card table interaction model', () => {
       cardId: 'king-s',
     });
     expect(disbandAction(actions, 1)).toEqual({ type: 'DISBAND_ROUTE', route: 1 });
+    expect(handDropAction(actions, 'value-5h', { kind: 'ROUTE', route: 2 })).toEqual({
+      type: 'PLAY_VALUE_CARD',
+      cardId: 'value-5h',
+      route: 2,
+    });
+    expect(
+      handDropAction(actions, 'king-s', {
+        kind: 'CARD',
+        targetPlayer: 'B',
+        route: 2,
+        targetCardId: 'b-route-2-card',
+      }),
+    ).toEqual({
+      type: 'PLAY_MODIFIER_CARD',
+      cardId: 'king-s',
+      targetPlayer: 'B',
+      route: 2,
+      targetCardId: 'b-route-2-card',
+    });
   });
 
   it('fails closed when the requested UI intent is not in legalActions', () => {
@@ -77,5 +97,14 @@ describe('card table interaction model', () => {
     expect(modifierPlayAction(actions, 'king-s', 'B', 0, 'missing')).toBeNull();
     expect(discardAction(actions, 'value-5h')).toBeNull();
     expect(disbandAction(actions, 0)).toBeNull();
+    expect(handDropAction(actions, 'value-5h', { kind: 'ROUTE', route: 1 })).toBeNull();
+    expect(
+      handDropAction(actions, 'king-s', {
+        kind: 'CARD',
+        targetPlayer: 'A',
+        route: 0,
+        targetCardId: 'missing',
+      }),
+    ).toBeNull();
   });
 });

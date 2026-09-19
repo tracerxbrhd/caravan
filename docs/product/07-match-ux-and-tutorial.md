@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted as the interaction contract for the CARAVAN match experience. The competitive tap-select/tap-target table, visual rules guide, authoritative result surface, direct rematch loop, and baseline tactile presentation layer are implemented. Confirmed public-card transitions, original procedural sound, platform haptics, and reduced-motion controls are present; richer per-action choreography remains follow-up polish.
+Accepted as the interaction contract for the CARAVAN match experience. The competitive tap-select/tap-target table, compact expandable cyclic hand, optional drag-to-target enhancement, visual rules guide, authoritative result surface, direct rematch loop, and baseline tactile presentation layer are implemented. Confirmed public-card transitions, original procedural sound, platform haptics, and reduced-motion controls are present; richer per-action choreography remains follow-up polish.
 
 The purpose of this document is to keep the client feeling like a coherent digital card table while keeping the game client non-authoritative.
 
@@ -37,9 +37,11 @@ Do not solve compact screens by shrinking cards until text and targets become un
 
 The baseline touch interaction is **tap-select -> tap-target**.
 
-Drag-and-drop may be added as an enhancement, but core gameplay must remain fully usable without precision dragging because Telegram WebViews and different mobile devices vary in gesture behavior.
+Drag-and-drop is implemented only as an enhancement. Core gameplay remains fully usable without precision dragging because Telegram WebViews and different mobile devices vary in gesture behavior. Drag release is translated through the same server-projected legal actions as tap-target; misses must never create optimistic board state.
 
 ### Selecting a card
+
+On phones, the hand should stay compact until the player asks to inspect it. Tapping the compact dock opens a cyclic drawer with one centered active card and partial neighboring cards; horizontal swipes and explicit previous/next controls browse the same authoritative hand without changing the game state.
 
 Selecting a hand card should:
 

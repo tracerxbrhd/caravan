@@ -35,10 +35,13 @@ describe('three-caravan table composition', () => {
     expect(table).toContain('snapshot.turnDeadlineAtMs === null');
   });
 
-  it('preserves authoritative tap-target interaction instead of introducing a second placement model', () => {
+  it('adds drag as an enhancement while preserving the authoritative tap-target action model', () => {
     expect(table).toContain('isModifierTarget(interaction, seat, routeIndex, node.card.id)');
     expect(table).toContain('valuePlayAction(legalActions, selectedCardId, routeIndex)');
     expect(table).toContain('modifierPlayAction(');
+    expect(table).toContain('handDropAction(legalActions, session.cardId, dropTarget)');
+    expect(table).toContain('data-hand-drop-kind="route"');
+    expect(table).toContain("data-hand-drop-kind={target ? 'card' : undefined}");
     expect(table).not.toContain('onDragStart');
     expect(table).not.toContain('onDrop');
   });
