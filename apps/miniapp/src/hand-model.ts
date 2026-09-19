@@ -25,11 +25,7 @@ export function cyclicHandOffset(index: number, activeIndex: number, count: numb
   return Math.abs(backward) < Math.abs(forward) ? backward : forward;
 }
 
-export function classifyHandGesture(
-  deltaX: number,
-  deltaY: number,
-  canDrag: boolean,
-): HandGesture {
+export function classifyHandGesture(deltaX: number, deltaY: number, canDrag: boolean): HandGesture {
   const absX = Math.abs(deltaX);
   const absY = Math.abs(deltaY);
 
