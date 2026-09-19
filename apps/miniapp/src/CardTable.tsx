@@ -588,6 +588,175 @@ export function CardTable({
     if (onSurrender()) setConfirmSurrender(false);
   };
 
+  const moveActiveHand = (step: -1 | 1): void => {
+    if (game.hand.length === 0) return;
+    const nextIndex = stepHandIndex(activeHandIndex, step, game.hand.length);
+    const nextCard = game.hand[nextIndex];
+    if (nextCard === undefined) return;
+    setActiveHandCardId(nextCard.id);
+    setSelectedCardId(null);
+    setConfirmDisband(null);
+  };
+
+  const selectActiveHandCard = (): void => {
+    if (!activeHandPlayable || activeHandCard === null) return;
+    const alreadySelected = selectedCardId === activeHandCard.id;
+    if (!alreadySelected) playSelectionFeedback(preferencesRef.current);
+    setSelectedCardId(alreadySelected ? null : activeHandCard.id);
+    setConfirmDisband(null);
+    if (!alreadySelected) setHandExpanded(false);
+  };
+
+  const openHand = (): void => {
+    if (game.hand.length === 0 || snapshot.status === 'FINISHED') return;
+    if (selectedCardId !== null && game.hand.some((card) => card.id === selectedCardId)) {
+      setActiveHandCardId(selectedCardId);
+    }
+    setHandExpanded(true);
+    setHandSwipeX(0);
+  };
+
+  const closeHand = (): void => {
+    handPointer.current = null;
+    setHandSwipeX(0);
+    setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
+    setHandExpanded(false);
+  };
+
+  const handleHandPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (!handExpanded || game.hand.length === 0) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    const target =
+      event.target instanceof Element
+        ? event.target.closest<HTMLElement>('[data-hand-card-id]')
+        : null;
+    const cardId = target?.dataset.handCardId ?? activeHandCard?.id ?? null;
+    handPointer.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      cardId,
+      startedOnActive: cardId !== null && cardId === activeHandCard?.id,
+      mode: 'PENDING',
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setHandSwipeX(0);
+    setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
+  };
+
+  const handleHandPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const session = handPointer.current;
+    if (session === null || session.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - session.startX;
+    const deltaY = event.clientY - session.startY;
+    const canDrag =
+      session.startedOnActive &&
+      session.cardId !== null &&
+      selectable.has(session.cardId) &&
+      yourTurn &&
+      !disabled;
+    const gesture = classifyHandGesture(deltaX, deltaY, canDrag);
+
+    if (session.mode === 'PENDING' && gesture.kind === 'DRAG') {
+      session.mode = 'DRAG';
+      if (session.cardId !== null && selectedCardId !== session.cardId) {
+        playSelectionFeedback(preferencesRef.current);
+        setSelectedCardId(session.cardId);
+        setConfirmDisband(null);
+      }
+    } else if (session.mode === 'PENDING' && gesture.kind === 'SWIPE') {
+      session.mode = 'SWIPE';
+      setSelectedCardId(null);
+    }
+
+    if (session.mode === 'DRAG') {
+      setHandSwipeX(0);
+      setHandDrag({
+        cardId: session.cardId,
+        x: deltaX,
+        y: deltaY,
+        dragging: true,
+      });
+      event.preventDefault();
+      return;
+    }
+
+    if (
+      session.mode === 'SWIPE' ||
+      (session.mode === 'PENDING' && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY))
+    ) {
+      setHandSwipeX(Math.max(-64, Math.min(64, deltaX)));
+      event.preventDefault();
+    }
+  };
+
+  const handleHandPointerUp = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const session = handPointer.current;
+    if (session === null || session.pointerId !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const deltaX = event.clientX - session.startX;
+    const deltaY = event.clientY - session.startY;
+    const canDrag =
+      session.startedOnActive &&
+      session.cardId !== null &&
+      selectable.has(session.cardId) &&
+      yourTurn &&
+      !disabled;
+    const gesture =
+      session.mode === 'DRAG'
+        ? ({ kind: 'DRAG' } as const)
+        : classifyHandGesture(deltaX, deltaY, canDrag);
+
+    if (gesture.kind === 'DRAG' && session.cardId !== null) {
+      const draggedElement = Array.from(
+        event.currentTarget.querySelectorAll<HTMLElement>('[data-hand-card-id]'),
+      ).find((element) => element.dataset.handCardId === session.cardId);
+      const previousPointerEvents = draggedElement?.style.pointerEvents ?? '';
+      if (draggedElement !== undefined) draggedElement.style.pointerEvents = 'none';
+      const dropTarget = dropTargetFromPoint(event.clientX, event.clientY);
+      if (draggedElement !== undefined) draggedElement.style.pointerEvents = previousPointerEvents;
+
+      const action =
+        dropTarget === null ? null : handDropAction(legalActions, session.cardId, dropTarget);
+      if (action !== null && submit(action)) {
+        setHandExpanded(false);
+      } else {
+        setSelectedCardId(session.cardId);
+        setHandExpanded(false);
+      }
+    } else if (gesture.kind === 'SWIPE') {
+      moveActiveHand(gesture.step);
+    } else if (gesture.kind === 'TAP' && session.cardId !== null) {
+      if (session.cardId !== activeHandCard?.id) {
+        setActiveHandCardId(session.cardId);
+        setSelectedCardId(null);
+        setConfirmDisband(null);
+      } else {
+        selectActiveHandCard();
+      }
+    }
+
+    handPointer.current = null;
+    setHandSwipeX(0);
+    setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
+  };
+
+  const handleHandPointerCancel = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (handPointer.current?.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    handPointer.current = null;
+    setHandSwipeX(0);
+    setHandDrag({ cardId: null, x: 0, y: 0, dragging: false });
+  };
+
   const opponentStatus = !snapshot.connected[opponent]
     ? 'Not connected'
     : game.activePlayer === opponent
