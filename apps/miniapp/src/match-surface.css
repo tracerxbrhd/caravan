@@ -135,19 +135,6 @@
   min-height: 0;
 }
 
-.match-result {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  left: 6px;
-  z-index: 40;
-  max-height: min(62%, 440px);
-  margin: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.48);
-}
-
 @media (max-width: 440px) {
   .shell--match {
     padding-top: calc(5px + var(--app-content-safe-top));
