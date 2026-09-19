@@ -4,7 +4,7 @@
 
 Implemented as the first fully interactive competitive match surface in the Mini App. This layer consumes the authoritative `MatchSnapshot` and realtime helpers introduced by the Mini App Play flow; it does not introduce another gameplay state machine or transport.
 
-PR24 replaces the original vertically serialized compact layout with a fixed three-caravan composition. All three opposing route pairs remain visible side by side in portrait and the live table is bounded to the Telegram stable viewport rather than turning the match into a scrollable dashboard. Confirmed card travel, public discard destinations, sound, haptics, and richer causal presentation remain the separate downstream layer in [`16-tactile-game-feel.md`](16-tactile-game-feel.md).
+PR24 replaces the original vertically serialized compact layout with a fixed three-caravan composition. All three opposing route pairs remain visible side by side in portrait and the live table is bounded to the Telegram stable viewport rather than turning the match into a scrollable dashboard. PR26 replaces the permanently open hand fan with a compact dock plus an on-demand cyclic hand drawer and adds pointer drag as an optional enhancement over the existing authoritative tap-target model. Confirmed card travel, public discard destinations, sound, haptics, and richer causal presentation remain the separate downstream layer in [`16-tactile-game-feel.md`](16-tactile-game-feel.md).
 
 ## Authority model
 
@@ -29,7 +29,7 @@ No route, hand, discard pile, turn, result, or card ownership is permanently mut
 
 ## Interaction model
 
-The baseline competitive interaction is `tap card -> tap target`.
+The baseline competitive interaction remains `tap card -> tap target`. The expanded hand also supports swipe browsing and drag-to-target as convenience gestures; neither gesture creates a second gameplay authority model.
 
 For a selected value card, only own routes with a matching `PLAY_VALUE_CARD` action are highlighted.
 
@@ -82,7 +82,9 @@ Public route cards overlap along the route axis. Dense routes increase overlap r
 
 Secondary presentation controls such as sound, haptics, motion and surrender are not allocated permanent vertical dashboard rows. They live behind a compact expandable table menu. Critical transient state remains directly visible; in particular, a waiting match whose opponent has not connected exposes a direct confirmed `Leave table` action so durable recovery cannot trap a player in an old match.
 
-The hand remains the existing compact tap-select fan until the separately scoped PR25 cyclic/expanded hand interaction is implemented. PR24 deliberately does not make dragging mandatory and does not add client-authoritative placement state.
+The hand is normally a compact dock so the public table keeps most of the phone viewport. Tapping it opens a bounded drawer over the lower table with one active card centered and neighboring cards partially visible. Horizontal swipe and previous/next controls cycle through the real hand without duplicating authoritative cards. Tapping a playable active card selects it and collapses the drawer back to the table so the normal legal-target flow remains easy to use.
+
+An upward drag from the active playable card is an enhancement. The pointer release is resolved only against currently highlighted route/card drop descriptors, which are translated back through the existing `legalActions` helpers. A miss does not mutate the board; it falls back to the selected-card state so the player can finish through tap-target. Card removal from hand still occurs only after a fresh server snapshot.
 
 Selection and legal-target feedback use transform, opacity, border, and shadow animation. Reduced-motion users inherit the Mini App's existing `prefers-reduced-motion` fallback, which collapses decorative animation without removing state information.
 
