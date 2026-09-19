@@ -1226,19 +1226,35 @@ button.playing-card:disabled {
   }
 
   .hand-zone {
-    min-height: 84px;
-    padding-inline: 4px;
+    min-height: 52px;
+    padding-inline: 3px;
   }
 
-  .hand-fan {
-    min-height: 69px;
-    padding: 7px 16px 2px;
+  .hand-dock__mini-cards {
+    width: 78px;
+    flex-basis: 78px;
   }
 
-  .hand-fan .playing-card {
-    width: 56px;
-    height: 80px;
-    margin-left: -17px;
+  .hand-drawer {
+    min-height: 190px;
+    padding: 7px;
+  }
+
+  .hand-carousel {
+    min-height: 106px;
+  }
+
+  .hand-carousel__stage {
+    height: 106px;
+  }
+
+  .hand-carousel-card,
+  .hand-carousel-card .playing-card {
+    width: 68px;
+  }
+
+  .hand-carousel-card .playing-card {
+    height: 96px;
   }
 }
 
@@ -1274,22 +1290,51 @@ button.playing-card:disabled {
   }
 
   .hand-zone {
-    min-height: 80px;
+    min-height: 50px;
   }
 
-  .hand-fan {
-    justify-content: center;
-    padding-inline: 12px;
+  .hand-dock {
+    gap: 3px;
   }
 
-  .hand-fan .playing-card {
-    width: 53px;
-    height: 76px;
-    margin-left: -18px;
+  .hand-dock__mini-cards {
+    width: 68px;
+    flex-basis: 68px;
   }
 
-  .hand-controls .player-counts span:last-child {
+  .hand-dock__copy .section-kicker {
     display: none;
+  }
+
+  .hand-dock__copy strong {
+    font-size: 0.59rem;
+  }
+
+  .hand-dock .hand-status .player-counts span:last-child,
+  .hand-drawer .hand-status .player-counts span:last-child {
+    display: none;
+  }
+
+  .hand-drawer {
+    min-height: 184px;
+    border-radius: 14px 14px 7px 7px;
+  }
+
+  .hand-drawer__header strong {
+    font-size: 0.66rem;
+  }
+
+  .hand-carousel {
+    grid-template-columns: 30px minmax(0, 1fr) 30px;
+  }
+
+  .hand-carousel__step {
+    width: 28px;
+    height: 50px;
+  }
+
+  .hand-drawer__actions .button {
+    padding-inline: 6px;
   }
 }
 
@@ -1308,27 +1353,40 @@ button.playing-card:disabled {
   }
 
   .hand-zone {
-    min-height: 72px;
+    min-height: 48px;
   }
 
-  .hand-fan {
-    min-height: 60px;
-    padding-top: 4px;
+  .hand-drawer {
+    min-height: 166px;
+    gap: 3px;
+    padding: 6px;
   }
 
-  .hand-fan .playing-card {
-    width: 48px;
-    height: 69px;
-    margin-left: -17px;
+  .hand-carousel {
+    min-height: 92px;
   }
 
-  .hand-controls {
-    min-height: 24px;
+  .hand-carousel__stage {
+    height: 92px;
+  }
+
+  .hand-carousel-card,
+  .hand-carousel-card .playing-card {
+    width: 62px;
+  }
+
+  .hand-carousel-card .playing-card {
+    height: 88px;
+  }
+
+  .hand-drawer__hint {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .playing-card,
+  .hand-carousel-card,
   .table-feel-toggle {
     transition-duration: 0.01ms;
   }
