@@ -1,10 +1,22 @@
 import type { MatchSnapshot, WireGameAction, WirePlayerView } from '@caravan/protocol';
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import {
   playConfirmedFeedback,
   playSelectionFeedback,
   unlockPresentationAudio,
 } from './feedback.js';
+import {
+  classifyHandGesture,
+  cyclicHandOffset,
+  stepHandIndex,
+} from './hand-model.js';
 import { platform } from './platform.js';
 import {
   cardTransitionName,
@@ -17,11 +29,13 @@ import {
   cardInteraction,
   discardAction,
   disbandAction,
+  handDropAction,
   isModifierTarget,
   modifierPlayAction,
   selectableCardIds,
   valuePlayAction,
   type CardInteraction,
+  type HandDropTarget,
   type RouteIndex,
 } from './table-model.js';
 
@@ -30,10 +44,34 @@ type PublicCard = WirePlayerView['hand'][number];
 type RouteView = WirePlayerView['players']['A']['routes'][number];
 type RouteCardView = RouteView['cards'][number];
 type CardPresentationStyle = CSSProperties & {
-  '--fan-angle'?: string;
-  '--fan-lift'?: string;
   viewTransitionName?: string;
 };
+
+type HandCarouselStyle = CSSProperties & {
+  '--hand-x'?: string;
+  '--hand-y'?: string;
+  '--hand-rotate'?: string;
+  '--hand-scale'?: string;
+  '--hand-opacity'?: string;
+};
+
+type HandPointerMode = 'PENDING' | 'SWIPE' | 'DRAG';
+
+interface HandPointerSession {
+  readonly pointerId: number;
+  readonly startX: number;
+  readonly startY: number;
+  readonly cardId: string | null;
+  readonly startedOnActive: boolean;
+  mode: HandPointerMode;
+}
+
+interface HandDragVisual {
+  readonly cardId: string | null;
+  readonly x: number;
+  readonly y: number;
+  readonly dragging: boolean;
+}
 
 interface CardTableProps {
   readonly snapshot: MatchSnapshot;
@@ -96,15 +134,48 @@ function transitionStyle(cardId: string): CardPresentationStyle {
   return { viewTransitionName: cardTransitionName(cardId) };
 }
 
-function handCardStyle(index: number, count: number): CardPresentationStyle {
-  const midpoint = (count - 1) / 2;
-  const offset = index - midpoint;
-  const angle = Math.max(-7, Math.min(7, offset * 2.2));
-  const lift = Math.min(7, Math.abs(offset) * 1.2);
+function handCarouselStyle(
+  offset: number,
+  drag: HandDragVisual,
+  cardId: string,
+): HandCarouselStyle {
+  const visible = Math.abs(offset) <= 2;
+  const active = offset === 0;
+  const dragging = drag.dragging && drag.cardId === cardId;
+  const x = dragging ? drag.x : offset * 76;
+  const y = dragging ? drag.y : active ? -8 : Math.min(8, Math.abs(offset) * 4);
   return {
-    '--fan-angle': `${angle}deg`,
-    '--fan-lift': `${lift}px`,
+    '--hand-x': `${x}px`,
+    '--hand-y': `${y}px`,
+    '--hand-rotate': `${dragging ? 0 : offset * 4}deg`,
+    '--hand-scale': dragging ? '1.08' : active ? '1' : '0.86',
+    '--hand-opacity': visible ? (active ? '1' : '0.76') : '0',
   };
+}
+
+function routeIndexFromData(value: string | undefined): RouteIndex | null {
+  if (value === '0') return 0;
+  if (value === '1') return 1;
+  if (value === '2') return 2;
+  return null;
+}
+
+function dropTargetFromPoint(clientX: number, clientY: number): HandDropTarget | null {
+  if (typeof document === 'undefined') return null;
+  const element = document.elementFromPoint(clientX, clientY);
+  if (!(element instanceof HTMLElement)) return null;
+  const target = element.closest<HTMLElement>('[data-hand-drop-kind]');
+  if (target === null) return null;
+
+  const route = routeIndexFromData(target.dataset.routeIndex);
+  if (route === null) return null;
+  if (target.dataset.handDropKind === 'route') return { kind: 'ROUTE', route };
+  if (target.dataset.handDropKind !== 'card') return null;
+
+  const targetPlayer = target.dataset.targetPlayer;
+  const targetCardId = target.dataset.targetCardId;
+  if ((targetPlayer !== 'A' && targetPlayer !== 'B') || targetCardId === undefined) return null;
+  return { kind: 'CARD', targetPlayer, route, targetCardId };
 }
 
 function routeValueStyle(seat: Seat, routeIndex: RouteIndex): CSSProperties {
