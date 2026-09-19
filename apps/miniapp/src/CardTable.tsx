@@ -275,17 +275,27 @@ function DiscardPile({
 
 function RouteCardNode({
   node,
+  seat,
+  routeIndex,
   target,
   disabled,
   onTarget,
 }: {
   readonly node: RouteCardView;
+  readonly seat: Seat;
+  readonly routeIndex: RouteIndex;
   readonly target: boolean;
   readonly disabled: boolean;
   onTarget(): void;
 }) {
   return (
-    <div className="route-node">
+    <div
+      className="route-node"
+      data-hand-drop-kind={target ? 'card' : undefined}
+      data-target-player={target ? seat : undefined}
+      data-route-index={target ? routeIndex : undefined}
+      data-target-card-id={target ? node.card.id : undefined}
+    >
       {target ? (
         <PlayingCard card={node.card} target disabled={disabled} onClick={onTarget} />
       ) : (
@@ -392,6 +402,8 @@ function RouteStrip({
             <RouteCardNode
               key={node.card.id}
               node={node}
+              seat={seat}
+              routeIndex={routeIndex}
               target={target}
               disabled={disabled}
               onTarget={() => {
@@ -414,6 +426,8 @@ function RouteStrip({
         <button
           type="button"
           className="route-place-target"
+          data-hand-drop-kind="route"
+          data-route-index={routeIndex}
           disabled={disabled}
           onClick={playValue}
         >
