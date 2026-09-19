@@ -68,7 +68,9 @@ Only cards already present in the sanitized `PlayerView` may receive public card
 
 ## Hand and attachment presentation
 
-The player's hand uses a restrained responsive fan built from CSS transforms. Selecting a card lifts it above the fan without reflowing the entire hand.
+The player's hand uses a compact dock plus an on-demand cyclic drawer built from CSS transforms. The drawer centers one active card, keeps neighboring cards partially visible, and cycles through the real hand without cloning authoritative card state. Selecting a card returns focus to the fixed table without reflowing the match surface.
+
+Horizontal hand browsing uses pointer-driven transform/opacity updates only. An upward pointer gesture may drag the active playable card toward a highlighted legal target, but this is presentation/intent collection only: the drop resolves through the current server-projected `legalActions`, and the card does not leave the authoritative hand until the next snapshot confirms the action.
 
 Modifier cards retain a compact attached slot beside their target value card. Stable transition identity lets a confirmed modifier visibly settle from the hand into that attachment rather than appearing unrelated to the selected card.
 
@@ -142,7 +144,7 @@ The existing game-engine, protocol, server, realtime, hidden-information, and le
 This layer intentionally does not add:
 
 - a client-authoritative animation/event state machine;
-- drag-and-drop as a required interaction;
+- drag-and-drop as a required interaction (drag is implemented only as an optional enhancement over tap-target);
 - large cinematic match-start sequences;
 - downloadable/custom sound packs;
 - cloud-synchronized presentation settings;
