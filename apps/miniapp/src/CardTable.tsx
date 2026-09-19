@@ -773,7 +773,11 @@ export function CardTable({
       : 'Waiting';
 
   return (
-    <div className="card-table" data-motion={preferences.motion.toLowerCase()}>
+    <div
+      className="card-table"
+      data-motion={preferences.motion.toLowerCase()}
+      data-hand-expanded={handExpanded ? 'true' : 'false'}
+    >
       <section className="table-opponent" aria-label="Opponent area">
         <div className="player-ribbon">
           <div>
@@ -908,48 +912,181 @@ export function CardTable({
         )}
       </section>
 
-      <section className="hand-zone" aria-label="Your hand">
-        <div className="hand-fan">
-          {game.hand.map((card, index) => {
-            const canSelect = selectable.has(card.id);
-            const selected = selectedCardId === card.id;
-            return (
-              <PlayingCard
-                key={card.id}
-                card={card}
-                selected={selected}
-                selectable={canSelect && yourTurn}
-                disabled={disabled || !yourTurn || !canSelect}
-                style={handCardStyle(index, game.hand.length)}
-                onClick={() => {
-                  setConfirmDisband(null);
-                  if (!selected) playSelectionFeedback(preferencesRef.current);
-                  setSelectedCardId(selected ? null : card.id);
-                }}
-              />
-            );
-          })}
-        </div>
+      <section
+        className={`hand-zone ${handExpanded ? 'hand-zone--expanded' : ''}`}
+        aria-label="Your hand"
+      >
+        {handExpanded ? (
+          <div className="hand-drawer">
+            <header className="hand-drawer__header">
+              <div>
+                <span className="section-kicker">Your hand</span>
+                <strong>
+                  {activeHandCard === null
+                    ? 'No cards'
+                    : `${activeHandIndex + 1} of ${game.hand.length} · ${rankLabel(activeHandCard)}${suitGlyph(activeHandCard)}`}
+                </strong>
+              </div>
+              <button type="button" className="button button--quiet" onClick={closeHand}>
+                Close
+              </button>
+            </header>
 
-        <div className="hand-controls">
-          <div className="hand-status">
-            <DiscardPile cards={game.players[viewer].discardPile} label="Your" />
-            <div className="player-counts">
-              <span>Deck {game.players[viewer].remainingDeckCount}</span>
-              <span>Discard {game.players[viewer].discardPile.length}</span>
+            <div className="hand-carousel">
+              <button
+                type="button"
+                className="hand-carousel__step hand-carousel__step--previous"
+                aria-label="Previous card"
+                disabled={game.hand.length <= 1}
+                onClick={() => moveActiveHand(-1)}
+              >
+                ‹
+              </button>
+
+              <div
+                className="hand-carousel__stage"
+                aria-label="Swipe left or right to browse your hand"
+                onPointerDown={handleHandPointerDown}
+                onPointerMove={handleHandPointerMove}
+                onPointerUp={handleHandPointerUp}
+                onPointerCancel={handleHandPointerCancel}
+              >
+                {game.hand.map((card, index) => {
+                  const offset = cyclicHandOffset(index, activeHandIndex, game.hand.length);
+                  const active = offset === 0;
+                  const canSelect = selectable.has(card.id);
+                  const dragging = handDrag.dragging && handDrag.cardId === card.id;
+                  return (
+                    <div
+                      className={[
+                        'hand-carousel-card',
+                        active ? 'hand-carousel-card--active' : '',
+                        dragging ? 'hand-carousel-card--dragging' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      key={card.id}
+                      data-hand-card-id={card.id}
+                      aria-hidden={Math.abs(offset) > 2}
+                      style={handCarouselStyle(
+                        offset,
+                        dragging ? handDrag : { ...handDrag, x: handDrag.x + handSwipeX },
+                        card.id,
+                      )}
+                    >
+                      <PlayingCard
+                        card={card}
+                        selected={selectedCardId === card.id}
+                        selectable={canSelect && yourTurn}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                className="hand-carousel__step hand-carousel__step--next"
+                aria-label="Next card"
+                disabled={game.hand.length <= 1}
+                onClick={() => moveActiveHand(1)}
+              >
+                ›
+              </button>
             </div>
+
+            <footer className="hand-drawer__footer">
+              <div className="hand-status">
+                <DiscardPile cards={game.players[viewer].discardPile} label="Your" />
+                <div className="player-counts">
+                  <span>Deck {game.players[viewer].remainingDeckCount}</span>
+                  <span>Discard {game.players[viewer].discardPile.length}</span>
+                </div>
+              </div>
+              <div className="hand-drawer__actions">
+                <button
+                  type="button"
+                  className="button button--primary"
+                  disabled={!activeHandPlayable}
+                  onClick={selectActiveHandCard}
+                >
+                  {activeHandCard !== null && selectedCardId === activeHandCard.id
+                    ? 'Deselect card'
+                    : 'Select card'}
+                </button>
+                {interaction?.canDiscard === true && (
+                  <button
+                    type="button"
+                    className="button button--quiet"
+                    disabled={disabled}
+                    onClick={discardSelected}
+                  >
+                    Discard selected
+                  </button>
+                )}
+              </div>
+            </footer>
+            <p className="hand-drawer__hint">
+              Swipe to browse. Tap a playable card to select it, or drag it to a highlighted target.
+            </p>
           </div>
-          {interaction?.canDiscard === true && (
+        ) : (
+          <div className="hand-dock">
+            <div className="hand-status">
+              <DiscardPile cards={game.players[viewer].discardPile} label="Your" />
+              <div className="player-counts">
+                <span>Deck {game.players[viewer].remainingDeckCount}</span>
+                <span>Discard {game.players[viewer].discardPile.length}</span>
+              </div>
+            </div>
+
             <button
               type="button"
-              className="button button--quiet"
-              disabled={disabled}
-              onClick={discardSelected}
+              className="hand-dock__open"
+              disabled={game.hand.length === 0 || snapshot.status === 'FINISHED'}
+              onClick={openHand}
+              aria-label={`Open your hand, ${game.hand.length} cards`}
             >
-              Discard selected
+              <span className="hand-dock__mini-cards" aria-hidden="true">
+                {game.hand.map((card, index) => (
+                  <span
+                    className={[
+                      'hand-mini-card',
+                      selectedCardId === card.id ? 'hand-mini-card--selected' : '',
+                      selectable.has(card.id) && yourTurn ? 'hand-mini-card--playable' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    key={card.id}
+                    style={handDockCardStyle(index, game.hand.length)}
+                  >
+                    <strong>{rankLabel(card)}</strong>
+                    <span>{suitGlyph(card)}</span>
+                  </span>
+                ))}
+              </span>
+              <span className="hand-dock__copy">
+                <span className="section-kicker">Your hand</span>
+                <strong>
+                  {selectedHandCard === null
+                    ? `${game.hand.length} cards · tap to open`
+                    : `${rankLabel(selectedHandCard)}${suitGlyph(selectedHandCard)} selected · tap to change`}
+                </strong>
+              </span>
             </button>
-          )}
-        </div>
+
+            {interaction?.canDiscard === true && (
+              <button
+                type="button"
+                className="button button--quiet hand-dock__discard"
+                disabled={disabled}
+                onClick={discardSelected}
+              >
+                Discard
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       <details className="table-menu">
