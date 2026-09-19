@@ -12,7 +12,7 @@
     "build": "pnpm -r --if-present run build",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier apps/miniapp/src/CardTable.tsx > /tmp/CardTable.tsx && diff -u apps/miniapp/src/CardTable.tsx /tmp/CardTable.tsx; prettier apps/miniapp/src/hand-model.ts > /tmp/hand-model.ts && diff -u apps/miniapp/src/hand-model.ts /tmp/hand-model.ts; prettier apps/miniapp/src/table.css > /tmp/table.css && diff -u apps/miniapp/src/table.css /tmp/table.css",
+    "format:check": "prettier --check .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "vitest run --passWithNoTests",
     "test:ci": "vitest run --passWithNoTests --no-file-parallelism",
