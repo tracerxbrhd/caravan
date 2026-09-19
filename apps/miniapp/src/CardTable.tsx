@@ -178,6 +178,15 @@ function dropTargetFromPoint(clientX: number, clientY: number): HandDropTarget |
   return { kind: 'CARD', targetPlayer, route, targetCardId };
 }
 
+function handDockCardStyle(index: number, count: number): CSSProperties {
+  const midpoint = (count - 1) / 2;
+  const offset = index - midpoint;
+  return {
+    zIndex: index + 1,
+    transform: `translateX(${offset * 10}px) translateY(${Math.abs(offset) * 1.2}px) rotate(${offset * 2.4}deg)`,
+  };
+}
+
 function routeValueStyle(seat: Seat, routeIndex: RouteIndex): CSSProperties {
   return { viewTransitionName: `caravan-route-value-${seat}-${routeIndex}` };
 }
