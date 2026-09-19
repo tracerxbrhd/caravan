@@ -768,9 +768,7 @@ button.playing-card:disabled {
   padding: 8px;
   border: 1px solid rgba(190, 148, 90, 0.34);
   border-radius: 16px 16px 8px 8px;
-  background:
-    linear-gradient(180deg, rgba(63, 45, 28, 0.98), rgba(25, 18, 13, 0.995)),
-    #1b140e;
+  background: linear-gradient(180deg, rgba(63, 45, 28, 0.98), rgba(25, 18, 13, 0.995)), #1b140e;
   box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.42);
 }
 
